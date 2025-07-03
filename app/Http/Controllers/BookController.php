@@ -435,6 +435,7 @@ class BookController extends Controller
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
 
+
         $pageCount = $pdf->setSourceFile($filePath);
         $stop_ = 0;
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
@@ -492,6 +493,7 @@ class BookController extends Controller
                     $pdf->Text($x + (1 * $scale), $y + (16 * $scale), 'วันที่...........เดือน...................พ.ศ..............');
                     $pdf->Text($x + (19 * $scale), $y + (20 * $scale), convertTimeToThai(date("H:i:s", strtotime($data->inputRecieveDate))));
                     $pdf->Text($x + (1 * $scale), $y + (21 * $scale), 'เวลา..........................................................น.');
+                }
             }
         }
 
