@@ -195,6 +195,8 @@
     <input type="hidden" name="positionX" id="positionX">
     <input type="hidden" name="positionY" id="positionY">
     <input type="hidden" name="positionPages" id="positionPages">
+    <input type="hidden" name="positionWidth" id="positionWidth">
+    <input type="hidden" name="positionHeight" id="positionHeight">
 </div>
 <div class="offcanvas offcanvas-start" style="width:30%" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
     <div class="offcanvas-header">
