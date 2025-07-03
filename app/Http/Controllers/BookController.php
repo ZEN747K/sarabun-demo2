@@ -390,6 +390,8 @@ class BookController extends Controller
         $positionX = $request->input('positionX');
         $positionY = $request->input('positionY');
         $positionPages = $request->input('positionPages');
+        $width = $request->input('width');
+        $height = $request->input('height');
         $pages = $request->input('pages');
         $query = new Book;
         $book = $query->where('id', $id)->first();
@@ -409,7 +411,7 @@ class BookController extends Controller
                     'detail' => 'ลงบันทึกรับหนังสือ',
                     'book_id' => $id
                 ]);
-                $this->editPdf($positionX, $positionY, $pages, $book, $positionPages);
+                $this->editPdf($positionX, $positionY, $pages, $book, $positionPages, $width, $height);
                 $filePath =  'uploads/' . rand(1, 10000) . time() . '.pdf';
                 rename(storage_path('app/public/' . $book->file), storage_path('app/public/' . $filePath));
                 $update->file = $filePath;
@@ -421,7 +423,7 @@ class BookController extends Controller
         return response()->json($data);
     }
 
-    public function editPdf($x, $y, $pages, $data, $positionPages)
+    public function editPdf($x, $y, $pages, $data, $positionPages, $widthPx, $heightPx)
     {
         $filePath = public_path('/storage/' . $data->file);
 
@@ -450,8 +452,8 @@ class BookController extends Controller
                     $pdf->setDrawColor(0, 0, 255);
                     $x = ($x / 1.5) * 0.3528;
                     $y = ($y / 1.5) * 0.3528;
-                    $width = 50;
-                    $height = 27;
+                    $width = ($widthPx / 1.5) * 0.3528;
+                    $height = ($heightPx / 1.5) * 0.3528;
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10);
                     $pdf->Text($x + 1, $y + 2, 'องค์การบริหารส่วนตำบลแปลงยาว');
@@ -475,8 +477,8 @@ class BookController extends Controller
                     $pdf->setDrawColor(0, 0, 255);
                     $x = ($x / 1.5) * 0.3528;
                     $y = ($y / 1.5) * 0.3528;
-                    $width = 50;
-                    $height = 27;
+                    $width = ($widthPx / 1.5) * 0.3528;
+                    $height = ($heightPx / 1.5) * 0.3528;
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10);
                     $pdf->Text($x + 1, $y + 2, 'องค์การบริหารส่วนตำบลแปลงยาว');
