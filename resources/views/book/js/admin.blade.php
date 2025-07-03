@@ -111,56 +111,229 @@
         document.getElementById('prev').addEventListener('click', onPrevPage);
 
 
-        // let markEventListener = null;
+        // Enhanced add-stamp with drag and resize functionality
         $('#add-stamp').click(function(e) {
             e.preventDefault();
             removeMarkListener();
             document.getElementById('add-stamp').disabled = true;
             document.getElementById('save-stamp').disabled = false;
 
-            markEventListener = function(e) {
-                var markCanvas = document.getElementById('mark-layer');
-                var markCtx = markCanvas.getContext('2d');
-                var rect = markCanvas.getBoundingClientRect();
-                var startX = (e.clientX - rect.left);
-                var startY = (e.clientY - rect.top);
+            var markCanvas = document.getElementById('mark-layer');
+            var markCtx = markCanvas.getContext('2d');
+            var rect = markCanvas.getBoundingClientRect();
+            
+            // Default position: center of canvas
+            var defaultWidth = 213;
+            var defaultHeight = 115;
+            var startX = (markCanvas.width - defaultWidth) / 2;
+            var startY = (markCanvas.height - defaultHeight) / 2;
+            var endX = startX + defaultWidth;
+            var endY = startY + defaultHeight;
 
-                var endX = startX + 213;
-                var endY = startY + 115;
+            markCoordinates = {
+                startX,
+                startY,
+                endX,
+                endY
+            };
+            
+            drawMark(startX, startY, endX, endY);
+            $('#positionX').val(startX);
+            $('#positionY').val(startY);
+            $('#positionPages').val(1);
 
-                markCoordinates = {
-                    startX,
-                    startY,
-                    endX,
-                    endY
-                };
-                drawMark(startX, startY, endX, endY);
-                $('#positionX').val(startX);
-                $('#positionY').val(startY);
-                $('#positionPages').val(1);
+            var text = '{{$position_name}}';
+            var dynamicX;
+            if (text.length >= 30) {
+                dynamicX = 5;
+            } else if (text.length >= 20) {
+                dynamicX = 10;
+            } else if (text.length >= 15) {
+                dynamicX = 60;
+            } else if (text.length >= 13) {
+                dynamicX = 75;
+            } else if (text.length >= 10) {
+                dynamicX = 70;
+            } else {
+                dynamicX = 80;
+            }
+            drawTextHeaderClassic('15px Sarabun', startX + dynamicX, startY + 25, text);
+            drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
+            drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
+            drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');
 
+            // Drag logic
+            var isDragging = false;
+            var dragOffsetX = 0;
+            var dragOffsetY = 0;
+            var isResizing = false;
+            var resizeHandleSize = 16;
+
+            function redrawStampBox() {
+                markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+                // Calculate scale for both box and text based on current box size
+                var boxW = markCoordinates.endX - markCoordinates.startX;
+                var boxH = markCoordinates.endY - markCoordinates.startY;
+                var defaultWidth = 213;
+                var defaultHeight = 115;
+                // Use the smaller scale of width/height to keep aspect ratio
+                var scaleW = boxW / defaultWidth;
+                var scaleH = boxH / defaultHeight;
+                var scale = Math.min(scaleW, scaleH);
+                // Minimum scale = 0.5, Maximum scale = 2.5
+                scale = Math.max(0.5, Math.min(2.5, scale));
+                // Draw the box using current coordinates (do not overwrite endX/endY)
+                drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
+                // Draw text with scaled font and position
                 var text = '{{$position_name}}';
+                var dynamicX;
                 if (text.length >= 30) {
-                    dynamicX = 5;
+                    dynamicX = 5 * scale;
                 } else if (text.length >= 20) {
-                    dynamicX = 10;
+                    dynamicX = 10 * scale;
                 } else if (text.length >= 15) {
-                    dynamicX = 60;
+                    dynamicX = 60 * scale;
                 } else if (text.length >= 13) {
-                    dynamicX = 75;
+                    dynamicX = 75 * scale;
                 } else if (text.length >= 10) {
-                    dynamicX = 70;
+                    dynamicX = 70 * scale;
                 } else {
-                    dynamicX = 80;
+                    dynamicX = 80 * scale;
                 }
-                drawTextHeaderClassic('15px Sarabun', startX + dynamicX, startY + 25, text);
-                drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
-                drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
-                drawTextHeaderClassic('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');
+                drawTextHeaderClassic((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + dynamicX, markCoordinates.startY + 25 * scale, text);
+                drawTextHeaderClassic((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 55 * scale, 'รับที่..........................................................');
+                drawTextHeaderClassic((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 80 * scale, 'วันที่.........เดือน......................พ.ศ.........');
+                drawTextHeaderClassic((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 100 * scale, 'เวลา......................................................น.');
+            }
+
+            // Helper: check if mouse is on resize handle (bottom-right corner)
+            function isOnResizeHandle(mouseX, mouseY) {
+                return (
+                    mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
+                    mouseY >= markCoordinates.endY - resizeHandleSize && mouseY <= markCoordinates.endY
+                );
+            }
+
+            // Change cursor when hovering resize handle
+            markCanvas.addEventListener('mousemove', function(e) {
+                var rect = markCanvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                if (isOnResizeHandle(mouseX, mouseY)) {
+                    markCanvas.style.cursor = 'se-resize';
+                } else if (
+                    mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
+                    mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
+                ) {
+                    markCanvas.style.cursor = 'move';
+                } else {
+                    markCanvas.style.cursor = 'default';
+                }
+            });
+
+            markCanvas.onmousedown = function(e) {
+                var rect = markCanvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                if (isOnResizeHandle(mouseX, mouseY)) {
+                    isResizing = true;
+                    e.preventDefault();
+                    window.addEventListener('mousemove', onResizeMove);
+                    window.addEventListener('mouseup', onResizeEnd);
+                } else if (
+                    mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
+                    mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
+                ) {
+                    isDragging = true;
+                    dragOffsetX = mouseX - markCoordinates.startX;
+                    dragOffsetY = mouseY - markCoordinates.startY;
+                    e.preventDefault();
+                    window.addEventListener('mousemove', onDragMove);
+                    window.addEventListener('mouseup', onDragEnd);
+                }
             };
 
-            var markCanvas = document.getElementById('mark-layer');
-            markCanvas.addEventListener('click', markEventListener);
+            // Prevent accidental reset of box when clicking outside
+            markCanvas.addEventListener('click', function(e) {
+                var rect = markCanvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                // Only allow click to reset if click is outside the box and not resizing/dragging
+                if (
+                    !isDragging && !isResizing &&
+                    (mouseX < markCoordinates.startX || mouseX > markCoordinates.endX ||
+                    mouseY < markCoordinates.startY || mouseY > markCoordinates.endY)
+                ) {
+                    // Prevent reset: do nothing
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            }, true);
+
+            function onDragMove(e) {
+                if (!isDragging) return;
+                // Calculate mouse position relative to canvas
+                var rect = markCanvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                // Keep current box size
+                var boxW = markCoordinates.endX - markCoordinates.startX;
+                var boxH = markCoordinates.endY - markCoordinates.startY;
+                var newStartX = mouseX - dragOffsetX;
+                var newStartY = mouseY - dragOffsetY;
+                // Clamp to canvas bounds
+                newStartX = Math.max(0, Math.min(markCanvas.width - boxW, newStartX));
+                newStartY = Math.max(0, Math.min(markCanvas.height - boxH, newStartY));
+                var newEndX = newStartX + boxW;
+                var newEndY = newStartY + boxH;
+                if (newEndX > markCanvas.width) {
+                    newEndX = markCanvas.width;
+                    newStartX = newEndX - boxW;
+                }
+                if (newEndY > markCanvas.height) {
+                    newEndY = markCanvas.height;
+                    newStartY = newEndY - boxH;
+                }
+                markCoordinates.startX = newStartX;
+                markCoordinates.startY = newStartY;
+                markCoordinates.endX = newEndX;
+                markCoordinates.endY = newEndY;
+                $('#positionX').val(newStartX);
+                $('#positionY').val(newStartY);
+                redrawStampBox();
+                showCancelStampBtn(markCoordinates.endX, markCoordinates.startY);
+            }
+
+            function onResizeMove(e) {
+                if (!isResizing) return;
+                var rect = markCanvas.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;
+                var mouseY = e.clientY - rect.top;
+                // Clamp min size
+                var minW = 40, minH = 30;
+                var newEndX = Math.max(markCoordinates.startX + minW, mouseX);
+                var newEndY = Math.max(markCoordinates.startY + minH, mouseY);
+                // Clamp to canvas
+                newEndX = Math.min(markCanvas.width, newEndX);
+                newEndY = Math.min(markCanvas.height, newEndY);
+                // Set only the width/height, keep startX/startY fixed
+                markCoordinates.endX = newEndX;
+                markCoordinates.endY = newEndY;
+                redrawStampBox();
+                showCancelStampBtn(markCoordinates.endX, markCoordinates.startY);
+            }
+
+            function onResizeEnd(e) {
+                isResizing = false;
+                window.removeEventListener('mousemove', onResizeMove);
+                window.removeEventListener('mouseup', onResizeEnd);
+            }
+
+            function onDragEnd(e) {
+                isDragging = false;
+                window.removeEventListener('mousemove', onDragMove);
+                window.removeEventListener('mouseup', onDragEnd);
+            }
 
             //เกษียณพับครึ่ง
             markEventListenerInsert = function(e) {
@@ -185,6 +358,7 @@
                 $('#positionPages').val(2);
 
                 var text = '{{$position_name}}';
+                var dynamicX;
                 if (text.length >= 30) {
                     dynamicX = 5;
                 } else if (text.length >= 20) {
@@ -383,7 +557,8 @@
             var lines = text.split('\n');
             return lines.length - 1;
         }
-        // ฟังก์ชันในการวาดกากบาทเล็กๆ ที่มุมขวาบน
+        
+        // Updated drawMark function with resize handle
         function drawMark(startX, startY, endX, endY) {
             //เคลียร์กรอบเดิมของหน้าเกษียณพับครึ่ง
             var markCanvas = document.getElementById('mark-layer-insert');
@@ -400,30 +575,17 @@
             markCtx.strokeStyle = 'blue';
             markCtx.stroke();
 
-            var crossSize = 10;
+            // Draw resize handle (bottom-right)
+            var resizeHandleSize = 16;
+            markCtx.save();
             markCtx.beginPath();
-            markCtx.moveTo(endX - crossSize, startY + crossSize);
-            markCtx.lineTo(endX, startY);
-            markCtx.moveTo(endX, startY + crossSize);
-            markCtx.lineTo(endX - crossSize, startY);
+            markCtx.rect(endX - resizeHandleSize, endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+            markCtx.fillStyle = '#fff';
+            markCtx.strokeStyle = '#007bff';
             markCtx.lineWidth = 2;
-            markCtx.strokeStyle = 'red';
+            markCtx.fill();
             markCtx.stroke();
-
-            markCanvas.addEventListener('click', function(event) {
-                var rect = markCanvas.getBoundingClientRect();
-                var clickX = event.clientX - rect.left;
-                var clickY = event.clientY - rect.top;
-
-                if (
-                    clickX >= endX - crossSize && clickX <= endX &&
-                    clickY >= startY && clickY <= startY + crossSize
-                ) {
-                    removeMarkListener();
-                    var markCtx = markCanvas.getContext('2d');
-                    markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-                }
-            });
+            markCtx.restore();
         }
 
         function drawMarkSignature(startX, startY, endX, endY, checkedValues) {
@@ -1059,6 +1221,54 @@
             Swal.fire("", "กรุณาเลือกตำแหน่งเกษียณหนังสือ", "info");
         }
     });
+
+    // Helper functions for stamp box management
+    function showCancelStampBtn(x, y) {
+        let cancelBtn = document.getElementById('cancel-stamp-btn');
+        var markCanvas = document.getElementById('mark-layer');
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancel-stamp-btn';
+            cancelBtn.className = 'btn btn-danger btn-sm';
+            cancelBtn.innerText = 'x';
+            cancelBtn.style.position = 'fixed'; // เปลี่ยนเป็น fixed
+            cancelBtn.style.zIndex = 1000;
+            cancelBtn.onclick = function() {
+                var markCtx = markCanvas.getContext('2d');
+                markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+                removeMarkListener();
+                document.getElementById('add-stamp').disabled = false;
+                document.getElementById('save-stamp').disabled = true;
+                cancelBtn.remove();
+            };
+            document.body.appendChild(cancelBtn);
+        }
+        // คำนวณตำแหน่งปุ่มจากตำแหน่งกล่องตราประทับบนจอจริง
+        const rect = markCanvas.getBoundingClientRect();
+        const btnLeft = rect.left + x;
+        const btnTop = rect.top + y - 40; // 40px เหนือกล่อง
+        cancelBtn.style.left = btnLeft + 'px';
+        cancelBtn.style.top = btnTop + 'px';
+        cancelBtn.style.display = 'block';
+    }
+    
+    function hideCancelStampBtn() {
+        let cancelBtn = document.getElementById('cancel-stamp-btn');
+        if (cancelBtn) cancelBtn.remove();
+    }
+    
+    // ====== Hide cancel button on page load and when no stamp box ======
+    document.addEventListener('DOMContentLoaded', function() {
+        hideCancelStampBtn();
+    });
+    
+    // ====== Hide cancel button when removeMarkListener is called ======
+    const _oldRemoveMarkListener = removeMarkListener;
+    removeMarkListener = function() {
+        hideCancelStampBtn();
+        _oldRemoveMarkListener.apply(this, arguments);
+    };
+
     $(document).ready(function() {
         $('#send-signature').click(function(e) {
             e.preventDefault();
