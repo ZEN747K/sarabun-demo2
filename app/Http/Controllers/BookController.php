@@ -615,6 +615,8 @@ class BookController extends Controller
         $positionX = $request->input('positionX');
         $positionY = $request->input('positionY');
         $positionPages = $request->input('positionPages');
+        $width = $request->input('width');
+        $height = $request->input('height');
         $pages = $request->input('pages');
         $query = new Book;
         $book = $query->where('id', $id)->first();
@@ -625,7 +627,7 @@ class BookController extends Controller
             $update->adminBookNumber = adminNumber();
             $update->adminDated = date('Y-m-d H:i:s');
             if ($update->save()) {
-                $this->editPdf_admin($positionX, $positionY, $pages, $update, $positionPages);
+                $this->editPdf_admin($positionX, $positionY, $pages, $update, $positionPages, $width, $height);
                 if ($positionPages == 2) {
                     if ($update->new_pages != 0) {
                         $update->new_pages = $update->new_pages + 1;
@@ -653,7 +655,7 @@ class BookController extends Controller
         return response()->json($data);
     }
 
-    public function editPdf_admin($x, $y, $pages, $data, $positionPages)
+    public function editPdf_admin($x, $y, $pages, $data, $positionPages, $widthPx = 50, $heightPx = 27)
     {
 
         $permission_name = $this->position_name;
@@ -702,48 +704,49 @@ class BookController extends Controller
                         $pdf->AddFont('sarabunextralight', '', $fontPath);
                         $pdf->setTextColor(0, 0, 255);
                         $pdf->setDrawColor(0, 0, 255);
+                        $scale = min($widthPx / 213, $heightPx / 115);
                         $x = ($x / 1.5) * 0.3528;
                         $y = ($y / 1.5) * 0.3528;
-                        $width = 50;
-                        $height = 27;
+                        $width = ($widthPx / 1.5) * 0.3528;
+                        $height = ($heightPx / 1.5) * 0.3528;
                         $pdf->Rect($x, $y, $width, $height);
-                        $pdf->SetFont('sarabunextralight', '', 10);
-                        $pdf->Text($x + $dynamicX, $y + 2, $permission_name);
-                        $pdf->Text($x + 21, $y + 8.5, numberToThaiDigits($data['adminBookNumber']));
-                        $pdf->SetFont('sarabunextralight', '', 8);
-                        $pdf->Text($x + 1, $y + 10, 'รับที่.................................................................');
-                        $pdf->Text($x + 8, $y + 15, convertDayToThai($data['adminDated']));
-                        $pdf->Text($x + 19.5, $y + 15, convertMonthsToThai($data['adminDated']));
-                        $pdf->Text($x + 39, $y + 15, convertYearsToThai($data['adminDated']));
-                        $pdf->Text($x + 1, $y + 16, 'วันที่...........เดือน........................พ.ศ..............');
-                        $pdf->Text($x + 19, $y + 20, convertTimeToThai(date('H:i:s', strtotime($data['adminDated']))));
-                        $pdf->Text($x + 1, $y + 21, 'เวลา.............................................................น.');
+                        $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                        $pdf->Text($x + $dynamicX * $scale, $y + 2 * $scale, $permission_name);
+                        $pdf->Text($x + 21 * $scale, $y + 8.5 * $scale, numberToThaiDigits($data['adminBookNumber']));
+                        $pdf->SetFont('sarabunextralight', '', 8 * $scale);
+                        $pdf->Text($x + 1 * $scale, $y + 10 * $scale, 'รับที่.................................................................');
+                        $pdf->Text($x + 8 * $scale, $y + 15 * $scale, convertDayToThai($data['adminDated']));
+                        $pdf->Text($x + 19.5 * $scale, $y + 15 * $scale, convertMonthsToThai($data['adminDated']));
+                        $pdf->Text($x + 39 * $scale, $y + 15 * $scale, convertYearsToThai($data['adminDated']));
+                        $pdf->Text($x + 1 * $scale, $y + 16 * $scale, 'วันที่...........เดือน........................พ.ศ..............');
+                        $pdf->Text($x + 19 * $scale, $y + 20 * $scale, convertTimeToThai(date('H:i:s', strtotime($data['adminDated']))));
+                        $pdf->Text($x + 1 * $scale, $y + 21 * $scale, 'เวลา.............................................................น.');
                     }
                     $skip++;
                 }
             } else {
                 if ($pageNo == $pages) {
-
                     $fontPath = resource_path('fonts/sarabunextralight.php');
                     $pdf->AddFont('sarabunextralight', '', $fontPath);
                     $pdf->setTextColor(0, 0, 255);
                     $pdf->setDrawColor(0, 0, 255);
+                    $scale = min($widthPx / 213, $heightPx / 115);
                     $x = ($x / 1.5) * 0.3528;
                     $y = ($y / 1.5) * 0.3528;
-                    $width = 50;
-                    $height = 27;
+                    $width = ($widthPx / 1.5) * 0.3528;
+                    $height = ($heightPx / 1.5) * 0.3528;
                     $pdf->Rect($x, $y, $width, $height);
-                    $pdf->SetFont('sarabunextralight', '', 10);
-                    $pdf->Text($x + $dynamicX, $y + 2, $permission_name);
-                    $pdf->Text($x + 21, $y + 8.5, numberToThaiDigits($data['adminBookNumber']));
-                    $pdf->SetFont('sarabunextralight', '', 8);
-                    $pdf->Text($x + 1, $y + 10, 'รับที่.................................................................');
-                    $pdf->Text($x + 8, $y + 15, convertDayToThai($data['adminDated']));
-                    $pdf->Text($x + 19.5, $y + 15, convertMonthsToThai($data['adminDated']));
-                    $pdf->Text($x + 39, $y + 15, convertYearsToThai($data['adminDated']));
-                    $pdf->Text($x + 1, $y + 16, 'วันที่...........เดือน........................พ.ศ..............');
-                    $pdf->Text($x + 19, $y + 20, convertTimeToThai(date('H:i:s', strtotime($data['adminDated']))));
-                    $pdf->Text($x + 1, $y + 21, 'เวลา.............................................................น.');
+                    $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                    $pdf->Text($x + $dynamicX * $scale, $y + 2 * $scale, $permission_name);
+                    $pdf->Text($x + 21 * $scale, $y + 8.5 * $scale, numberToThaiDigits($data['adminBookNumber']));
+                    $pdf->SetFont('sarabunextralight', '', 8 * $scale);
+                    $pdf->Text($x + 1 * $scale, $y + 10 * $scale, 'รับที่.................................................................');
+                    $pdf->Text($x + 8 * $scale, $y + 15 * $scale, convertDayToThai($data['adminDated']));
+                    $pdf->Text($x + 19.5 * $scale, $y + 15 * $scale, convertMonthsToThai($data['adminDated']));
+                    $pdf->Text($x + 39 * $scale, $y + 15 * $scale, convertYearsToThai($data['adminDated']));
+                    $pdf->Text($x + 1 * $scale, $y + 16 * $scale, 'วันที่...........เดือน........................พ.ศ..............');
+                    $pdf->Text($x + 19 * $scale, $y + 20 * $scale, convertTimeToThai(date('H:i:s', strtotime($data['adminDated']))));
+                    $pdf->Text($x + 1 * $scale, $y + 21 * $scale, 'เวลา.............................................................น.');
                 }
             }
         }

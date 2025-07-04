@@ -12,6 +12,8 @@
     var permission = '{{$permission}}';
 
     var imgData = null;
+    // Make markCoordinates global so all handlers can access it
+    var markCoordinates = null;
 
     function pdf(url) {
         var pdfDoc = null,
@@ -27,7 +29,7 @@
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
 
-        var markCoordinates = null;
+        // markCoordinates is now global
 
         document.getElementById('add-stamp').disabled = true;
 
@@ -975,6 +977,9 @@
                 icon: 'question'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    // Calculate width and height of the stamp box
+                    var boxW = markCoordinates.endX - markCoordinates.startX;
+                    var boxH = markCoordinates.endY - markCoordinates.startY;
                     $.ajax({
                         type: "post",
                         url: "/book/admin_stamp",
@@ -983,7 +988,9 @@
                             positionX: positionX,
                             positionY: positionY,
                             positionPages: positionPages,
-                            pages: pages
+                            pages: pages,
+                            width: boxW,
+                            height: boxH
                         },
                         dataType: "json",
                         headers: {
