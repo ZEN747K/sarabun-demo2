@@ -141,6 +141,8 @@
             $('#positionX').val(startX);
             $('#positionY').val(startY);
             $('#positionPages').val(1);
+            $('#positionWidth').val(defaultWidth);
+            $('#positionHeight').val(defaultHeight);
 
             var text = '{{$position_name}}';
             var dynamicX;
@@ -176,6 +178,8 @@
                 var boxH = markCoordinates.endY - markCoordinates.startY;
                 var defaultWidth = 213;
                 var defaultHeight = 115;
+                $('#positionWidth').val(boxW);
+                $('#positionHeight').val(boxH);
                 // Use the smaller scale of width/height to keep aspect ratio
                 var scaleW = boxW / defaultWidth;
                 var scaleH = boxH / defaultHeight;
@@ -356,6 +360,8 @@
                 $('#positionX').val(startX);
                 $('#positionY').val(startY);
                 $('#positionPages').val(2);
+                $('#positionWidth').val(213);
+                $('#positionHeight').val(115);
 
                 var text = '{{$position_name}}';
                 var dynamicX;
@@ -832,6 +838,11 @@
             markCanvasInsert.removeEventListener('click', markEventListenerInsert);
             markEventListenerInsert = null;
         }
+        $('#positionX').val('');
+        $('#positionY').val('');
+        $('#positionPages').val('');
+        $('#positionWidth').val('');
+        $('#positionHeight').val('');
     }
 
     function resetMarking() {
@@ -965,6 +976,8 @@
         var positionX = $('#positionX').val();
         var positionY = $('#positionY').val();
         var positionPages = $('#positionPages').val();
+        var positionWidth = $('#positionWidth').val();
+        var positionHeight = $('#positionHeight').val();
         var pages = $('#page-select').find(":selected").val();
         if (id != '' && positionX != '' && positionY != '') {
             Swal.fire({
@@ -983,6 +996,8 @@
                             positionX: positionX,
                             positionY: positionY,
                             positionPages: positionPages,
+                            width: positionWidth,
+                            height: positionHeight,
                             pages: pages
                         },
                         dataType: "json",
