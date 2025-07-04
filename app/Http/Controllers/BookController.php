@@ -615,8 +615,6 @@ class BookController extends Controller
         $positionX = $request->input('positionX');
         $positionY = $request->input('positionY');
         $positionPages = $request->input('positionPages');
-        $width = $request->input('width');
-        $height = $request->input('height');
         $pages = $request->input('pages');
         $query = new Book;
         $book = $query->where('id', $id)->first();
@@ -627,7 +625,7 @@ class BookController extends Controller
             $update->adminBookNumber = adminNumber();
             $update->adminDated = date('Y-m-d H:i:s');
             if ($update->save()) {
-                $this->editPdf_admin($positionX, $positionY, $pages, $update, $positionPages, $width, $height);
+                $this->editPdf_admin($positionX, $positionY, $pages, $update, $positionPages);
                 if ($positionPages == 2) {
                     if ($update->new_pages != 0) {
                         $update->new_pages = $update->new_pages + 1;
@@ -655,7 +653,7 @@ class BookController extends Controller
         return response()->json($data);
     }
 
-    public function editPdf_admin($x, $y, $pages, $data, $positionPages, $widthPx, $heightPx)
+    public function editPdf_admin($x, $y, $pages, $data, $positionPages)
     {
 
         $permission_name = $this->position_name;
@@ -704,13 +702,12 @@ class BookController extends Controller
                         $pdf->AddFont('sarabunextralight', '', $fontPath);
                         $pdf->setTextColor(0, 0, 255);
                         $pdf->setDrawColor(0, 0, 255);
-                        $scale = min($widthPx / 213, $heightPx / 115);
                         $x = ($x / 1.5) * 0.3528;
                         $y = ($y / 1.5) * 0.3528;
-                        $width = ($widthPx / 1.5) * 0.3528;
-                        $height = ($heightPx / 1.5) * 0.3528;
+                        $width = 50;
+                        $height = 27;
                         $pdf->Rect($x, $y, $width, $height);
-                        $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                        $pdf->SetFont('sarabunextralight', '', 10);
                         $pdf->Text($x + $dynamicX, $y + 2, $permission_name);
                         $pdf->Text($x + 21, $y + 8.5, numberToThaiDigits($data['adminBookNumber']));
                         $pdf->SetFont('sarabunextralight', '', 8);
@@ -731,13 +728,12 @@ class BookController extends Controller
                     $pdf->AddFont('sarabunextralight', '', $fontPath);
                     $pdf->setTextColor(0, 0, 255);
                     $pdf->setDrawColor(0, 0, 255);
-                    $scale = min($widthPx / 213, $heightPx / 115);
                     $x = ($x / 1.5) * 0.3528;
                     $y = ($y / 1.5) * 0.3528;
-                    $width = ($widthPx / 1.5) * 0.3528;
-                    $height = ($heightPx / 1.5) * 0.3528;
+                    $width = 50;
+                    $height = 27;
                     $pdf->Rect($x, $y, $width, $height);
-                    $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                    $pdf->SetFont('sarabunextralight', '', 10);
                     $pdf->Text($x + $dynamicX, $y + 2, $permission_name);
                     $pdf->Text($x + 21, $y + 8.5, numberToThaiDigits($data['adminBookNumber']));
                     $pdf->SetFont('sarabunextralight', '', 8);
