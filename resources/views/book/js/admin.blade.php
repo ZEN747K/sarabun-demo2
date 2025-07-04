@@ -141,6 +141,8 @@
             $('#positionX').val(startX);
             $('#positionY').val(startY);
             $('#positionPages').val(1);
+            $('#positionWidth').val(defaultWidth);
+            $('#positionHeight').val(defaultHeight);
 
             var text = '{{$position_name}}';
             var dynamicX;
@@ -174,6 +176,8 @@
                 // Calculate scale for both box and text based on current box size
                 var boxW = markCoordinates.endX - markCoordinates.startX;
                 var boxH = markCoordinates.endY - markCoordinates.startY;
+                $('#positionWidth').val(boxW);
+                $('#positionHeight').val(boxH);
                 var defaultWidth = 213;
                 var defaultHeight = 115;
                 // Use the smaller scale of width/height to keep aspect ratio
@@ -356,6 +360,8 @@
                 $('#positionX').val(startX);
                 $('#positionY').val(startY);
                 $('#positionPages').val(2);
+                $('#positionWidth').val(213);
+                $('#positionHeight').val(115);
 
                 var text = '{{$position_name}}';
                 var dynamicX;
@@ -425,6 +431,8 @@
                             $('#positionX').val(startX);
                             $('#positionY').val(startY);
                             $('#positionPages').val(1);
+                            $('#positionWidth').val(213);
+                            $('#positionHeight').val(115);
 
                             var text = $('#modal-text').val();
                             var lineBreakCount = countLineBreaks(text);
@@ -965,6 +973,8 @@
         var positionX = $('#positionX').val();
         var positionY = $('#positionY').val();
         var positionPages = $('#positionPages').val();
+        var positionWidth = $('#positionWidth').val();
+        var positionHeight = $('#positionHeight').val();
         var pages = $('#page-select').find(":selected").val();
         if (id != '' && positionX != '' && positionY != '') {
             Swal.fire({
@@ -983,6 +993,8 @@
                             positionX: positionX,
                             positionY: positionY,
                             positionPages: positionPages,
+                            width: positionWidth,
+                            height: positionHeight,
                             pages: pages
                         },
                         dataType: "json",
