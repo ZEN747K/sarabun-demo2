@@ -91,7 +91,7 @@ class UsersController extends Controller
             $users->updated_at = date('Y-m-d H:i:s');
             if ($request->hasFile('formFile')) {
                 $file = $request->file('formFile');
-                $filePath = $file->store('users');
+                $filePath = $file->store('users', 'public');
                 $filePath = str_replace('users/', '', $filePath);
                 $users->signature = $filePath;
             }

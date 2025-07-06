@@ -12,6 +12,11 @@
         var permission = '{{$permission}}';
 
         var imgData = null;
+        // Preload signature image and track load state
+        var signatureImg = new Image();
+        var signatureImgLoaded = false;
+        signatureImg.onload = function() { signatureImgLoaded = true; };
+        signatureImg.src = signature;
         // Make markCoordinates global so all handlers can access it
         var markCoordinates = null;
         // Add global variable for signature coordinates
@@ -582,14 +587,11 @@
                                             resizeHandleSize, resizeHandleSize);
                                         markCtx.restore();
 
-                                        // Draw signature image
-                                        var img = new Image();
-                                        img.src = signature;
-                                        img.onload = function () {
-                                            var imgWidth = imageBox.endX - imageBox.startX;
-                                            var imgHeight = imageBox.endY - imageBox.startY;
-                                            markCtx.drawImage(img, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
-
+                                        // Draw signature image only if loaded
+                                        var imgWidth = imageBox.endX - imageBox.startX;
+                                        var imgHeight = imageBox.endY - imageBox.startY;
+                                        if (signatureImgLoaded) {
+                                            markCtx.drawImage(signatureImg, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
                                             imgData = {
                                                 x: imageBox.startX,
                                                 y: imageBox.startY,
@@ -898,14 +900,11 @@
                                             resizeHandleSize, resizeHandleSize);
                                         markCtx.restore();
 
-                                        // Draw signature image
-                                        var img = new Image();
-                                        img.src = signature;
-                                        img.onload = function () {
-                                            var imgWidth = imageBox.endX - imageBox.startX;
-                                            var imgHeight = imageBox.endY - imageBox.startY;
-                                            markCtx.drawImage(img, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
-
+                                        // Draw signature image only if loaded
+                                        var imgWidth = imageBox.endX - imageBox.startX;
+                                        var imgHeight = imageBox.endY - imageBox.startY;
+                                        if (signatureImgLoaded) {
+                                            markCtx.drawImage(signatureImg, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
                                             imgData = {
                                                 x: imageBox.startX,
                                                 y: imageBox.startY,
@@ -1122,17 +1121,13 @@
 
                 checkedValues.forEach(element => {
                     if (element == 4) {
-                        var img = new Image();
-                        img.src = signature;
-                        img.onload = function () {
-                            var imgWidth = 240;
-                            var imgHeight = 130;
-
-                            var centeredX = (startX + 50) - (imgWidth / 2);
-                            var centeredY = (startY + 60) - (imgHeight / 2);
-
-                            markCtx.drawImage(img, centeredX, centeredY, imgWidth, imgHeight);
-
+                        // Draw signature image only if loaded
+                        var imgWidth = 240;
+                        var imgHeight = 130;
+                        var centeredX = (startX + 50) - (imgWidth / 2);
+                        var centeredY = (startY + 60) - (imgHeight / 2);
+                        if (signatureImgLoaded) {
+                            markCtx.drawImage(signatureImg, centeredX, centeredY, imgWidth, imgHeight);
                             imgData = {
                                 x: centeredX,
                                 y: centeredY,
@@ -1699,15 +1694,48 @@
         $('#signature-save').click(function (e) {
             e.preventDefault();
             var id = $('#id').val();
-            var positionX = $('#positionX').val();
-            var positionY = $('#positionY').val();
             var pages = $('#page-select').find(":selected").val();
             var positionPages = $('#positionPages').val();
             var text = $('#modal-text').val();
             var checkedValues = $('input[type="checkbox"]:checked').map(function () {
                 return $(this).val();
             }).get();
-            if (id != '' && positionX != '' && positionY != '') {
+
+            // Get latest box coordinates for textBox and imageBox
+            var textBox = null;
+            var imageBox = null;
+            if (typeof signatureCoordinates !== 'undefined' && signatureCoordinates) {
+                if (signatureCoordinates.textBox) {
+                    textBox = {
+                        startX: signatureCoordinates.textBox.startX,
+                        startY: signatureCoordinates.textBox.startY,
+                        endX: signatureCoordinates.textBox.endX,
+                        endY: signatureCoordinates.textBox.endY
+                    };
+                }
+                if (signatureCoordinates.imageBox) {
+                    imageBox = {
+                        startX: signatureCoordinates.imageBox.startX,
+                        startY: signatureCoordinates.imageBox.startY,
+                        endX: signatureCoordinates.imageBox.endX,
+                        endY: signatureCoordinates.imageBox.endY
+                    };
+                }
+            }
+
+            // Use the actual box coordinates for positionX, positionY, width, height
+            var positionX = null;
+            var positionY = null;
+            var width = null;
+            var height = null;
+            if (textBox) {
+                positionX = textBox.startX;
+                positionY = textBox.startY;
+                width = textBox.endX - textBox.startX;
+                height = textBox.endY - textBox.startY;
+            }
+
+            if (id != '' && positionX !== null && positionY !== null) {
                 Swal.fire({
                     title: "ยืนยันการลงเกษียณหนังสือ",
                     showCancelButton: true,
@@ -1716,7 +1744,6 @@
                     icon: 'question'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Prepare signature data with box coordinates
                         var signatureData = {
                             id: id,
                             positionX: positionX,
@@ -1724,28 +1751,19 @@
                             positionPages: positionPages,
                             pages: pages,
                             text: text,
-                            checkedValues: checkedValues
+                            checkedValues: checkedValues,
+                            width: width,
+                            height: height
                         };
-
-                        // Add box coordinates if they exist
-                        if (signatureCoordinates) {
-                            signatureData.textBox = {
-                                startX: signatureCoordinates.textBox.startX,
-                                startY: signatureCoordinates.textBox.startY,
-                                width: signatureCoordinates.textBox.endX - signatureCoordinates.textBox.startX,
-                                height: signatureCoordinates.textBox.endY - signatureCoordinates.textBox.startY
+                        // If imageBox is present and checked, send its coordinates as well
+                        if (imageBox && checkedValues.includes('4')) {
+                            signatureData.imageBox = {
+                                startX: imageBox.startX,
+                                startY: imageBox.startY,
+                                width: imageBox.endX - imageBox.startX,
+                                height: imageBox.endY - imageBox.startY
                             };
-
-                            if (checkedValues.includes('4')) {
-                                signatureData.imageBox = {
-                                    startX: signatureCoordinates.imageBox.startX,
-                                    startY: signatureCoordinates.imageBox.startY,
-                                    width: signatureCoordinates.imageBox.endX - signatureCoordinates.imageBox.startX,
-                                    height: signatureCoordinates.imageBox.endY - signatureCoordinates.imageBox.startY
-                                };
-                            }
                         }
-
                         $.ajax({
                             type: "post",
                             url: "/book/signature_stamp",
