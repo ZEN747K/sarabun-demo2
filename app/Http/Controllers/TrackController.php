@@ -59,7 +59,7 @@ class TrackController extends Controller
                 $book = new Book();
                 $book = $book
                     ->select('books.*', 'book_types.name as type_name', 'book_number_types.name as number_type')
-                    ->leftJoin('book_types', 'book_types.id', '=', 'books.inputBookregistNumber')
+                    ->leftJoin('book_types', 'book_types.id', '=', 'books.selectBookregist')
                     ->leftJoin('book_number_types', 'book_number_types.id', '=', 'books.selectBookcircular')
                     ->find($rec->book_id);
 				if(!empty($book) > 0){
@@ -118,7 +118,7 @@ class TrackController extends Controller
                 $book = new Book();
                 $book = $book
                     ->select('books.*', 'book_types.name as type_name', 'book_number_types.name as number_type')
-                    ->leftJoin('book_types', 'book_types.id', '=', 'books.inputBookregistNumber')
+                    ->leftJoin('book_types', 'book_types.type', '=', 'books.inputBookregistNumber')
                     ->leftJoin('book_number_types', 'book_number_types.id', '=', 'books.selectBookcircular')
                     ->find($id);
                 $logs_detail = new Log_active_book();
