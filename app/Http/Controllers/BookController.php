@@ -1354,4 +1354,49 @@ class BookController extends Controller
         }
         return response()->json($data);
     }
+    public function reject(Request $request)
+    {
+        $data['status'] = false;
+        $data['message'] = '';
+        $id = $request->input('id');
+        $log = Log_status_book::where('position_id', $this->position_id)
+            ->where('book_id', $id)
+            ->first();
+        if ($log) {
+            $log->status = 16;
+            $log->updated_at = date('Y-m-d H:i:s');
+            if ($log->save()) {
+                $book = Book::find($id);
+                $firstUser = User::find($book->created_by);
+                $firstPosition = ($firstUser) ? $firstUser->position_id : $this->position_id;
+                $oldPath = $log->file;
+                $file = str_replace($log->position_id . '/uploads/', '', $log->file);
+                $newPath = 'directory/' . $firstPosition . '/' . $file;
+                if (Storage::exists($oldPath)) {
+                    Storage::copy($oldPath, $newPath);
+                }
+                $directorylogs = new Directory_log();
+                $directorylogs->book_id = $id;
+                $directorylogs->position_id = $firstPosition;
+                $directorylogs->logs_id = $log->id;
+                $directorylogs->file = $file;
+                $directorylogs->created_at = date('Y-m-d H:i:s');
+                $directorylogs->created_by = auth()->user()->id;
+                $directorylogs->updated_at = date('Y-m-d H:i:s');
+                $directorylogs->updated_by = auth()->user()->id;
+                $directorylogs->save();
+                log_active([
+                    'users_id' => auth()->user()->id,
+                    'status' => 16,
+                    'datetime' => date('Y-m-d H:i:s'),
+                    'detail' => 'ปฏิเสธหนังสือ',
+                    'book_id' => $id,
+                    'position_id' => $log->position_id
+                ]);
+                $data['status'] = true;
+                $data['message'] = 'ปฏิเสธหนังสือเรียบร้อย';
+            }
+        }
+        return response()->json($data);
+    }
 }

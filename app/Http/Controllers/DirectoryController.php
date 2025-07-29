@@ -70,6 +70,14 @@ class DirectoryController extends Controller
             }
         }
         ksort($data['item']);
+        $data['reject'] = [];
+        foreach ($data['item'] as $id => $name) {
+            $count = Directory_log::leftJoin('log_status_books', 'log_status_books.id', '=', 'directory_logs.logs_id')
+                ->where('directory_logs.position_id', $id)
+                ->where('log_status_books.status', 16)
+                ->count();
+            $data['reject'][$id] = $count > 0;
+        }
 
         return view('directory.index', $data);
     }

@@ -51,6 +51,7 @@ Route::middleware('auth.admin')->group(function () {
     Route::post('/book/uploadPdf', [BookController::class, 'uploadPdf'])->name('bookSender.uploadPdf');
     Route::post('/book/number_save', [BookController::class, 'number_save'])->name('bookSender.number_save');
     Route::post('/book/directory_save', [BookController::class, 'directory_save'])->name('bookSender.directory_save');
+    Route::post('/book/reject', [BookController::class, 'reject'])->name('book.reject');
 
     Route::get('/users/listUsers', [UsersController::class, 'listUsers'])->name('users.listUsers');
     Route::get('/users/listData', [UsersController::class, 'listData'])->name('users.listData');

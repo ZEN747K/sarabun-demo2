@@ -79,7 +79,11 @@
         <div class="card card-file">
             @foreach($item as $key => $rs)
             <div class="folder-container" onclick="toggleFolder('folder{{$key}}', this, '{{$key}}')">
-                <div class="folder">📂 {{$rs}}</div>
+                <div class="folder">📂 {{$rs}}
+                    @if(isset($reject[$key]) && $reject[$key])
+                        <span class="text-danger">(ปฏิเสธ)</span>
+                    @endif
+                </div>
             </div>
             @endforeach
             <!-- <div class="folder-container" onclick="toggleFolder('folder1', this)">

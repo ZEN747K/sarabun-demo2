@@ -94,6 +94,7 @@
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="send-save" title="บันทึกข้อมูล" disabled><i class="fa fa-floppy-o"></i></button>
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="directory-save" title="จัดเก็บไฟล์" disabled><i class="fa fa-folder-o"></i></button>
                         <button class="btn btn-outline-dark btn-sm" style="margin-right: 5px;font-size: 5px;" id="prev"><i class="fa fa-arrow-circle-left"></i></button>
+                        <button class="btn btn-outline-danger btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="reject-book" title="ปฏิเสธ">ปฏิเสธ</button>
                         <select id="page-select" class="border-dark"></select>
                         <button class="btn btn-outline-dark btn-sm" style="margin-left: 5px;font-size: 5px;" id="next"><i class="fa fa-arrow-circle-right"></i></button>
                     </div>

@@ -494,7 +494,7 @@
                                     var textBox = signatureCoordinates.textBox;
                                     markCtx.save();
                                     markCtx.strokeStyle = 'blue';
-                                    markCtx.lineWidth = 1;
+                                    markCtx.lineWidth = 0.5;
                                     markCtx.strokeRect(textBox.startX, textBox.startY,
                                         textBox.endX - textBox.startX, textBox.endY - textBox.startY);
 
@@ -522,7 +522,7 @@
                                     var bottomBox = signatureCoordinates.bottomBox;
                                     markCtx.save();
                                     markCtx.strokeStyle = 'purple';
-                                    markCtx.lineWidth = 1;
+                                    markCtx.lineWidth = 0.5;
                                     markCtx.strokeRect(bottomBox.startX, bottomBox.startY,
                                         bottomBox.endX - bottomBox.startX, bottomBox.endY - bottomBox.startY);
 
@@ -573,7 +573,7 @@
                                         var imageBox = signatureCoordinates.imageBox;
                                         markCtx.save();
                                         markCtx.strokeStyle = 'green';
-                                        markCtx.lineWidth = 1;
+                                        markCtx.lineWidth = 0.5;
                                         markCtx.strokeRect(imageBox.startX, imageBox.startY,
                                             imageBox.endX - imageBox.startX, imageBox.endY - imageBox.startY);
 
@@ -831,7 +831,7 @@
                                     var textBox = signatureCoordinates.textBox;
                                     markCtx.save();
                                     markCtx.strokeStyle = 'blue';
-                                    markCtx.lineWidth = 1;
+                                    markCtx.lineWidth = 0.5;
                                     markCtx.strokeRect(textBox.startX, textBox.startY,
                                         textBox.endX - textBox.startX, textBox.endY - textBox.startY);
 
@@ -886,7 +886,7 @@
                                         var imageBox = signatureCoordinates.imageBox;
                                         markCtx.save();
                                         markCtx.strokeStyle = 'green';
-                                        markCtx.lineWidth = 1;
+                                        markCtx.lineWidth = 0.5;
                                         markCtx.strokeRect(imageBox.startX, imageBox.startY,
                                             imageBox.endX - imageBox.startX, imageBox.endY - imageBox.startY);
 
@@ -1093,7 +1093,7 @@
 
                 markCtx.beginPath();
                 markCtx.rect(startX, startY, endX - startX, endY - startY);
-                markCtx.lineWidth = 1;
+                markCtx.lineWidth = 0.5;
                 markCtx.strokeStyle = 'blue';
                 markCtx.stroke();
 
@@ -1193,7 +1193,7 @@
 
                 markCtx.beginPath();
                 markCtx.rect(startX, startY, endX - startX, endY - startY);
-                markCtx.lineWidth = 1;
+                markCtx.lineWidth = 0.5;
                 markCtx.strokeStyle = 'blue';
                 markCtx.stroke();
 
@@ -1334,6 +1334,10 @@
             if (status == 14) {
                 document.getElementById('directory-save').disabled = false;
                 $('#directory-save').show();
+            }
+            if (status >= 3 && status < 15) {
+                document.getElementById('reject-book').disabled = false;
+                $('#reject-book').show();
             }
             resetMarking();
             removeMarkListener();
@@ -1904,6 +1908,44 @@
                                 }, 1500);
                             } else {
                                 Swal.fire("", "จัดเก็บไม่สำเร็จ", "error");
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        $('#reject-book').click(function (e) {
+            e.preventDefault();
+            Swal.fire({
+                title: "",
+                text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: "ยกเลิก",
+                confirmButtonText: "ตกลง"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    var id = $('#id').val();
+                    $.ajax({
+                        type: "post",
+                        url: "/book/reject",
+                        data: {
+                            id: id,
+                        },
+                        dataType: "json",
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        success: function (response) {
+                            if (response.status) {
+                                Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error");
                             }
                         }
                     });

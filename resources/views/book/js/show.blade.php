@@ -397,7 +397,7 @@
             markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
             markCtx.beginPath();
             markCtx.rect(startX, startY, endX - startX, endY - startY);
-            markCtx.lineWidth = 1;
+            markCtx.lineWidth = 0.5;
             markCtx.strokeStyle = 'blue';
             markCtx.stroke();
             // Draw resize handle (bottom-right)
@@ -424,7 +424,7 @@
 
             markCtx.beginPath();
             markCtx.rect(startX, startY, endX - startX, endY - startY);
-            markCtx.lineWidth = 1;
+            markCtx.lineWidth = 0.5;
             markCtx.strokeStyle = 'blue';
             markCtx.stroke();
 
@@ -917,7 +917,7 @@
         markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
         markCtx.beginPath();
         markCtx.rect(startX, startY, endX - startX, endY - startY);
-        markCtx.lineWidth = 1;
+        markCtx.lineWidth = 0.5;
         markCtx.strokeStyle = 'blue';
         markCtx.stroke();
         // Draw resize handle (bottom-right)
