@@ -1359,6 +1359,7 @@ class BookController extends Controller
         $data['status'] = false;
         $data['message'] = '';
         $id = $request->input('id');
+        $note = $request->input('note');
         $log = Log_status_book::where('position_id', $this->position_id)
             ->where('book_id', $id)
             ->first();
@@ -1389,7 +1390,7 @@ class BookController extends Controller
                     'users_id' => auth()->user()->id,
                     'status' => 16,
                     'datetime' => date('Y-m-d H:i:s'),
-                    'detail' => 'ปฏิเสธหนังสือ',
+                    'detail' => 'ปฏิเสธหนังสือ' . ($note ? ' <span style="color:red; font-weight:bold;"> หมายเหตุ :</span> ' . $note : ''),
                     'book_id' => $id,
                     'position_id' => $log->position_id
                 ]);

@@ -1920,19 +1920,29 @@
                 title: "",
                 text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
                 icon: "warning",
+                input: 'textarea',
+                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ',
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",
                 cancelButtonText: "ยกเลิก",
-                confirmButtonText: "ตกลง"
+                confirmButtonText: "ตกลง",
+                preConfirm: (note) => {
+                    if (!note) {
+                        Swal.showValidationMessage('กรุณากรอกเหตุผล');
+                    }
+                    return note;
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
                     var id = $('#id').val();
+                    var note = result.value;
                     $.ajax({
                         type: "post",
                         url: "/book/reject",
                         data: {
                             id: id,
+                            note: note,
                         },
                         dataType: "json",
                         headers: {
