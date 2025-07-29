@@ -105,11 +105,11 @@ class BooksenderController extends Controller
         $book->type = 2;
         if ($request->hasFile('file-input')) {
             $file = $request->file('file-input');
-            $filePath = $file->store('uploads');
+            $filePath = $file->store('uploads', 'public');
             $book->file = ($filePath) ? $filePath : '';
         }
         if ($request->hasFile('file-attachments')) {
-            $attachments = $request->file('file-attachments');
+            $filePathAttachments = $attachments->store('attachments', 'public');
             $filePathAttachments = $attachments->store('attachments');
             $book->fileAttachments = ($filePathAttachments) ? $filePathAttachments : '';
         }

@@ -132,13 +132,13 @@ class BookController extends Controller
             } else {
                 if ($request->hasFile('file-input')) {
                     $file = $request->file('file-input');
-                    $filePath = $file->store('uploads');
+                    $filePath = $file->store('uploads', 'public');
                     $book->file = ($filePath) ? $filePath : '';
                 }
             }
             if ($request->hasFile('file-attachments')) {
                 $attachments = $request->file('file-attachments');
-                $filePathAttachments = $attachments->store('attachments');
+                $filePathAttachments = $attachments->store('attachments', 'public');
                 $book->fileAttachments = ($filePathAttachments) ? $filePathAttachments : '';
             }
             if ($book->save()) {
@@ -1239,7 +1239,7 @@ class BookController extends Controller
         $book = book::find($input['id']);
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $filePath = $file->store('uploads');
+            $filePath = $file->store('uploads', 'public');
             $book->file = ($filePath) ? $filePath : '';
             if ($book->save()) {
                 $data['status'] = true;
