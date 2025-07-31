@@ -1369,7 +1369,7 @@ class BookController extends Controller
             if ($log->save()) {
                 $book = Book::find($id);
                 $firstUser = User::find($book->created_by);
-                $firstPosition = ($firstUser) ? $firstUser->position_id : $this->position_id;
+                $firstPosition = optional($firstUser)->position_id ?: auth()->user()->position_id;
                 $oldPath = $log->file;
                 $file = str_replace($log->position_id . '/uploads/', '', $log->file);
                 $newPath = 'directory/' . $firstPosition . '/' . $file;
