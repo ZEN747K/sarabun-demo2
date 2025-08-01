@@ -12,6 +12,7 @@
     var uploadArea = document.getElementById('upload-area');
     var pdfContainer = document.getElementById('pdf-container');
     var browseBtn = document.getElementById('browse-btn');
+    var editMode = false;
 
     function pdf(url) {
         var pdfDoc = null,
@@ -125,8 +126,19 @@
             // Default position: center of canvas
             var defaultWidth = 213;
             var defaultHeight = 115;
-            var startX = (markCanvas.width - defaultWidth) / 2;
-            var startY = (markCanvas.height - defaultHeight) / 2;
+            var startX;
+            var startY;
+            if (editMode && $('#oldPositionX').val()) {
+                startX = parseFloat($('#oldPositionX').val());
+                startY = parseFloat($('#oldPositionY').val());
+                defaultWidth = parseFloat($('#oldPositionWidth').val() || defaultWidth);
+                defaultHeight = parseFloat($('#oldPositionHeight').val() || defaultHeight);
+                $('#positionPages').val($('#oldPositionPages').val() || 1);
+            } else {
+                startX = (markCanvas.width - defaultWidth) / 2;
+                startY = (markCanvas.height - defaultHeight) / 2;
+                $('#positionPages').val(1);
+            }
             var endX = startX + defaultWidth;
             var endY = startY + defaultHeight;
 
@@ -139,7 +151,6 @@
             drawMark(startX, startY, endX, endY);
             $('#positionX').val(startX);
             $('#positionY').val(startY);
-            $('#positionPages').val(1);
             $('#positionWidth').val(defaultWidth);
             $('#positionHeight').val(defaultHeight);
 
@@ -511,6 +522,7 @@
         $('.btn-default').hide();
         $('#div-showPdf').show();
         $('#div-uploadPdf').hide();
+        editMode = false;
         document.getElementById('add-stamp').disabled = false;
         document.getElementById('save-stamp').disabled = true;
         document.getElementById('number-save').disabled = true;
@@ -521,6 +533,22 @@
         $('#number_id').val(number_id);
         $('#positionX').val('');
         $('#positionY').val('');
+        $('#oldPositionX').val('');
+        $('#oldPositionY').val('');
+        $('#oldPositionPages').val('');
+        $('#oldPositionWidth').val('');
+        $('#oldPositionHeight').val('');
+        if (status == 2) {
+            $.get('/book/stamp_position/' + id, function(res){
+                if(res.status){
+                    $('#oldPositionX').val(res.x);
+                    $('#oldPositionY').val(res.y);
+                    $('#oldPositionPages').val(res.pages);
+                    $('#oldPositionWidth').val(res.width);
+                    $('#oldPositionHeight').val(res.height);
+                }
+            });
+        }
         document.getElementById('add-stamp').disabled = true;
         // if (permission_id != '1') {
         if (type == 1) {
@@ -531,6 +559,11 @@
             }
             if (status == 2) {
                 $('#send-to').show();
+                $('#edit-stamp').show();
+                $('#save-stamp').show();
+            } else {
+                $('#edit-stamp').hide();
+                $('#save-stamp').show();
             }
         }
         if (type == 2) {
@@ -585,6 +618,8 @@
         $('#positionPages').val('');
         $('#positionWidth').val('');
         $('#positionHeight').val('');
+        $('#edit-date-hidden').val('');
+        $('#edit-time-hidden').val('');
     }
 
     function resetMarking() {
@@ -714,18 +749,24 @@
                 icon: 'question'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    var urlAjax = editMode ? "/book/edit_stamp" : "/book/save_stamp";
+                    var postData = {
+                        id: id,
+                        positionX: positionX,
+                        positionY: positionY,
+                        positionPages: positionPages,
+                        width: positionWidth,
+                        height: positionHeight,
+                        pages: pages
+                    };
+                    if(editMode){
+                        postData.date = $('#edit-date-hidden').val();
+                        postData.time = $('#edit-time-hidden').val();
+                    }
                     $.ajax({
                         type: "post",
-                        url: "/book/save_stamp",
-                        data: {
-                            id: id,
-                            positionX: positionX,
-                            positionY: positionY,
-                            positionPages: positionPages,
-                            width: positionWidth,
-                            height: positionHeight,
-                            pages: pages
-                        },
+                        url: urlAjax,
+                        data: postData,
                         dataType: "json",
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -746,6 +787,56 @@
         } else {
             Swal.fire("", "กรุณาเลือกตำแหน่งของตราประทับ", "info");
         }
+    });
+
+    $('#edit-stamp').click(function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'ยืนยันตัวตนผู้ดูแล',
+            html: '<input id="admin-user" class="swal2-input" placeholder="Username">' +
+                  '<input id="admin-pass" type="password" class="swal2-input" placeholder="Password">',
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const username = $('#admin-user').val();
+                const password = $('#admin-pass').val();
+                return $.ajax({
+                    type: 'post',
+                    url: '/book/check_admin',
+                    data: { username: username, password: password },
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                });
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value.status) {
+                Swal.fire({
+                    title: 'แก้ไขวันและเวลา',
+                    html: '<input type="date" id="edit-date" class="swal2-input">' +
+                          '<input type="time" id="edit-time" class="swal2-input">',
+                    showCancelButton: true,
+                    confirmButtonText: 'ตกลง',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((res) => {
+                    if (res.isConfirmed) {
+                        editMode = true;
+                        $('#edit-date-hidden').val($('#edit-date').val());
+                        $('#edit-time-hidden').val($('#edit-time').val());
+                        $('#add-stamp').show();
+                        document.getElementById('add-stamp').disabled = false;
+                        $('#add-stamp').trigger('click');
+                        if($('#oldPositionX').val()){
+                            Swal.fire('', 'ยืนยันตำแหน่งตราประทับแล้วกดบันทึก', 'info');
+                        }else{
+                            Swal.fire('', 'เลือกตำแหน่งตราประทับแล้วกดบันทึก', 'info');
+                        }
+                    }
+                });
+            } else if (result.isConfirmed) {
+                Swal.fire('', 'ไม่พบข้อมูลผู้ดูแล', 'error');
+            }
+        });
     });
     $('#number-save').click(function(e) {
         e.preventDefault();

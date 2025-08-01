@@ -79,6 +79,7 @@
                     <div class="col-6 d-flex justify-content-end mb-3">
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="insert-pages" title="เกษียณพับครึ่ง"><i class="fa fa-sticky-note-o"></i></button>
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="add-stamp" title="ตราประทับ">ตราประทับ</button>
+                        <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="edit-stamp" title="แก้ไขตราประทับ">แก้ไขตราประทับ</button>
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="number-stamp" title="ประทับเลขที่รับ">ประทับเลขที่รับ</button>
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="number-save" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
                         <button class="btn btn-outline-dark btn-sm hidden btn-default" style="margin-right: 5px;font-size: 15px;" id="save-stamp" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
@@ -198,6 +199,13 @@
     <input type="hidden" name="positionPages" id="positionPages">
     <input type="hidden" name="positionWidth" id="positionWidth">
     <input type="hidden" name="positionHeight" id="positionHeight">
+    <input type="hidden" name="edit-date-hidden" id="edit-date-hidden">
+    <input type="hidden" name="edit-time-hidden" id="edit-time-hidden">
+    <input type="hidden" id="oldPositionX">
+    <input type="hidden" id="oldPositionY">
+    <input type="hidden" id="oldPositionPages">
+    <input type="hidden" id="oldPositionWidth">
+    <input type="hidden" id="oldPositionHeight">
 </div>
 <div class="offcanvas offcanvas-start" style="width:30%" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
     <div class="offcanvas-header">

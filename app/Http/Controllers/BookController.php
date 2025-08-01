@@ -19,7 +19,7 @@ use setasign\Fpdi\Tcpdf\Fpdi;
 use Illuminate\Support\Facades\Auth;
 use Webklex\IMAP\Facades\Client;
 use Webklex\PHPIMAP\ClientManager;
-
+use Illuminate\Support\Facades\Hash;
 class BookController extends Controller
 {
 
@@ -1399,5 +1399,130 @@ class BookController extends Controller
             }
         }
         return response()->json($data);
+    }
+    public function check_admin(Request $request)
+    {
+        $user = User::where('email', $request->username)->first();
+        $status = false;
+        if ($user && Hash::check($request->password, $user->password)) {
+            $status = true;
+        }
+        return response()->json(['status' => $status]);
+    }
+
+    public function get_stamp_position($id)
+    {
+        $book = Book::find($id);
+        if ($book) {
+            return response()->json([
+                'status' => true,
+                'x' => $book->position_x ?? null,
+                'y' => $book->position_y ?? null,
+                'pages' => $book->position_pages ?? null,
+                'width' => $book->position_width ?? null,
+                'height' => $book->position_height ?? null,
+            ]);
+        }
+        return response()->json(['status' => false]);
+    }
+
+    public function edit_stamp(Request $request)
+    {
+        $data['status'] = false;
+        $id = $request->input('id');
+        $positionX = $request->input('positionX');
+        $positionY = $request->input('positionY');
+        $positionPages = $request->input('positionPages');
+        $width = $request->input('width');
+        $height = $request->input('height');
+        $pages = $request->input('pages');
+        $date = $request->input('date');
+        $time = $request->input('time');
+        $book = Book::find($id);
+        if ($book) {
+            $book->inputRecieveDate = $date . ' ' . $time . ':00';
+            $book->updated_by = $this->users->id;
+            $book->updated_at = date('Y-m-d H:i:s');
+            if ($book->save()) {
+                $this->overwritePdfStamp($positionX, $positionY, $pages, $book, $positionPages, $width, $height);
+                $data['status'] = true;
+            }
+        }
+        return response()->json($data);
+    }
+
+    private function overwritePdfStamp($x, $y, $pages, $data, $positionPages, $widthPx = 213, $heightPx = 115)
+    {
+        $filePath = public_path('/storage/' . $data->file);
+        if (!file_exists($filePath)) {
+            return 'File not found!';
+        }
+        $pdf = new Fpdi();
+        $pdf->setAutoPageBreak(false, 0);
+        $pdf->SetMargins(210, 0, 0);
+        $pageCount = $pdf->setSourceFile($filePath);
+        $stop_ = 0;
+        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+            $templateId = $pdf->importPage($pageNo);
+            $pdf->AddPage();
+            $pdf->useTemplate($templateId);
+            if ($positionPages == 2) {
+                if ($stop_ == 0) {
+                    $pdf->AddPage();
+                    $fontPath = resource_path('fonts/sarabunextralight.php');
+                    $pdf->AddFont('sarabunextralight', '', $fontPath);
+                    $pdf->setTextColor(0, 0, 255);
+                    $pdf->setDrawColor(0, 0, 255);
+                    $scale = min($widthPx / 213, $heightPx / 115);
+                    $x = ($x / 1.5) * 0.3528;
+                    $y = ($y / 1.5) * 0.3528;
+                    $width = ($widthPx / 1.5) * 0.3528;
+                    $height = ($heightPx / 1.5) * 0.3528;
+                    $pdf->SetFillColor(255, 255, 255);
+                    $pdf->Rect($x, $y, $width, $height, 'F');
+                    $pdf->Rect($x, $y, $width, $height);
+                    $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
+                    $pdf->SetFont('sarabunextralight', '', 8 * $scale);
+                    $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.......................................................');
+                    $pdf->Text($x + (8 * $scale), $y + (15 * $scale), convertDayToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (19.5 * $scale), $y + (15 * $scale), convertMonthsToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (39 * $scale), $y + (15 * $scale), convertYearsToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (1 * $scale), $y + (16 * $scale), 'วันที่.............เดือน...................พ.ศ..............');
+                    $pdf->Text($x + (19 * $scale), $y + (20 * $scale), convertTimeToThai(date("H:i:s", strtotime($data->inputRecieveDate))));
+                    $pdf->Text($x + (1 * $scale), $y + (21 * $scale), 'เวลา.....................................................น.');
+                    $stop_++;
+                }
+            } else {
+                if ($pageNo == $pages) {
+                    $fontPath = resource_path('fonts/sarabunextralight.php');
+                    $pdf->AddFont('sarabunextralight', '', $fontPath);
+                    $pdf->setTextColor(0, 0, 255);
+                    $pdf->setDrawColor(0, 0, 255);
+                    $scale = min($widthPx / 213, $heightPx / 115);
+                    $x = ($x / 1.5) * 0.3528;
+                    $y = ($y / 1.5) * 0.3528;
+                    $width = ($widthPx / 1.5) * 0.3528;
+                    $height = ($heightPx / 1.5) * 0.3528;
+                    $pdf->SetFillColor(255, 255, 255);
+                    $pdf->Rect($x, $y, $width, $height, 'F');
+                    $pdf->Rect($x, $y, $width, $height);
+                    $pdf->SetFont('sarabunextralight', '', 10 * $scale);
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
+                    $pdf->SetFont('sarabunextralight', '', 8 * $scale);
+                    $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.......................................................');
+                    $pdf->Text($x + (8 * $scale), $y + (15 * $scale), convertDayToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (19.5 * $scale), $y + (15 * $scale), convertMonthsToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (39 * $scale), $y + (15 * $scale), convertYearsToThai($data->inputRecieveDate));
+                    $pdf->Text($x + (1 * $scale), $y + (16 * $scale), 'วันที่.............เดือน...................พ.ศ..............');
+                    $pdf->Text($x + (19 * $scale), $y + (20 * $scale), convertTimeToThai(date("H:i:s", strtotime($data->inputRecieveDate))));
+                    $pdf->Text($x + (1 * $scale), $y + (21 * $scale), 'เวลา.....................................................น.');
+                }
+            }
+        }
+        $outputPath = public_path('/storage/' . $data->file);
+        $pdf->Output($outputPath, 'F');
     }
 }
