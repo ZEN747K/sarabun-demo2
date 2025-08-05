@@ -902,6 +902,7 @@ class BookController extends Controller
                 $width  = $request->input('width');
                 $height = $request->input('height');
                 $imageBox = $request->input('imageBox');
+                $bottomBox = $request->input('bottomBox');
 
                 $this->editPdf_signature(
                     $input['positionX'],
@@ -913,7 +914,9 @@ class BookController extends Controller
                     $input['positionPages'],
                     $width,
                     $height,
-                    $imageBox
+                    $imageBox,
+                    $bottomBox
+                    
                 );
                 if ($input['positionPages'] == 2) {
                     $update->new_pages = $update->new_pages + 1;
@@ -940,17 +943,33 @@ class BookController extends Controller
         $positionPages,
         $widthPx = 213,
         $heightPx = 40,
-        $imageBox = null
-    )
-    {
+        $imageBox = null,
+        $bottomBox = null
+    ) {
         error_reporting(E_ALL & ~E_WARNING);
         preg_match_all('/\n/', $text, $matches);
         $lineCount = count($matches[0]);
         $text = explode("\n", $text);
 
         $scale = min($widthPx / 213, $heightPx / 40);
-        $x = ($x / 1.5) * 0.3528;
-        $y = ($y / 1.5) * 0.3528;
+        $x_mm = ($x / 1.5) * 0.3528;
+        $y_mm = ($y / 1.5) * 0.3528;
+        $width_mm = ($widthPx / 1.5) * 0.3528;
+        $centerX = $x_mm + ($width_mm / 2);
+
+        if ($bottomBox) {
+            $bottomScale = min($bottomBox['width'] / 213, $bottomBox['height'] / 80);
+            $bottomX_mm = ($bottomBox['startX'] / 1.5) * 0.3528;
+            $bottomY_mm = ($bottomBox['startY'] / 1.5) * 0.3528;
+            $bottomWidth_mm = ($bottomBox['width'] / 1.5) * 0.3528;
+            $bottomCenterX = $bottomX_mm + ($bottomWidth_mm / 2);
+        } else {
+            $bottomScale = $scale;
+            $plus_y = in_array('4', $checkedValues) ? 35 * $scale : 5 * $scale;
+            $bottomX_mm = $x_mm;
+            $bottomY_mm = $y_mm + $plus_y + (5 * $lineCount * $scale) - (25 * $scale);
+            $bottomCenterX = $x_mm + ($width_mm / 2);
+        }
         $filePath = public_path('/storage/' . $data['file']);
 
         if (!file_exists($filePath)) {
@@ -986,57 +1005,51 @@ class BookController extends Controller
                         $pdf->SetFont('sarabunextralight', '', 10 * $scale);
 
                         for ($i = 0; $i <= $lineCount; $i++) {
-                            $centeredX = $this->getCenteredPosition($pdf, $text[$i], 10 * $scale, $x, $y + (5 * $i * $scale));
-                            $pdf->Text($centeredX, $y + (5 * $i * $scale), $text[$i]);
+                            $centeredX = $this->getCenteredPosition($pdf, $text[$i], 10 * $scale, $centerX, $y_mm + (5 * $i * $scale));
+                            $pdf->Text($centeredX, $y_mm + (5 * $i * $scale), $text[$i]);
                         }
 
-                        $checkbox_text = '';
-                        $checkbox_x = 0;
-                        foreach ($checkedValues as $key => $value) {
+                       foreach ($checkedValues as $value) {
                             if ($value == 4) {
-                                $plus_y = 35 * $scale;
+                                
                                 if ($imageBox) {
                                     $signatureX = ($imageBox['startX'] / 1.5) * 0.3528;
                                     $signatureY = ($imageBox['startY'] / 1.5) * 0.3528;
                                     $imgW = ($imageBox['width'] / 1.5) * 0.3528;
                                     $imgH = ($imageBox['height'] / 1.5) * 0.3528;
                                 } else {
-                                    $signatureX = $x - 25;
-                                    $signatureY = $y + 3 * $scale + (5 * $lineCount * $scale);
+                                    $signatureX = $x_mm - 25;
+                                    $signatureY = $y_mm + 3 * $scale + (5 * $lineCount * $scale);
                                     $imgW = ($widthPx / 3.3) * 0.3528;
                                     $imgH = ($heightPx / 1.33) * 0.3528;
                                 }
                                 $pdf->Image(public_path('storage/users/' . auth()->user()->signature), $signatureX, $signatureY, $imgW, $imgH);
-                            } else {
-                                $plus_y = 5 * $scale;
+                            
                             }
                         }
+                        $pdf->SetFont('sarabunextralight', '', 10 * $bottomScale);
 
                         $i = 0;
-                        foreach ($checkedValues as $key => $value) {
-                            switch ($value) {
-                                case '1':
-                                    $checkbox_text = '(' . $this->users->fullname . ')';
-                                    break;
-                                case '2':
-                                    $checkbox_text = str_replace('\n', '<br>', $this->permission_data->permission_name);
-                                    break;
-                                case '3':
-                                    $checkbox_text = convertDateToThai(date("Y-m-d"));
-                                    break;
-                            }
-                            $text = explode("\n", $checkbox_text);
+                        foreach ($checkedValues as $value) {
                             if ($value != 4) {
-                                $stop = 0;
-                                foreach ($text as $text_) {
-                                    if (count($text) > 1) {
-                                        if ($stop != 0) {
-                                            $i++;
-                                        }
-                                        $stop++;
-                                    }
-                                    $centeredX = $this->getCenteredPosition($pdf, $text_, 10 * $scale, $x, $y + $plus_y + (5 * $lineCount * $scale) + (5 * ($key + $i) * $scale));
-                                    $pdf->Text($centeredX, $y + $plus_y + (5 * $lineCount * $scale) + (5 * ($key + $i) * $scale), $text_);
+                                switch ($value) {
+                                    case '1':
+                                        $checkbox_text = '(' . $this->users->fullname . ')';
+                                        break;
+                                    case '2':
+                                        $checkbox_text = str_replace('\n', '<br>', $this->permission_data->permission_name);
+                                        break;
+                                    case '3':
+                                        $checkbox_text = convertDateToThai(date("Y-m-d"));
+                                        break;
+                                    default:
+                                        $checkbox_text = '';
+                                }
+                                $lines = explode("\n", $checkbox_text);
+                                foreach ($lines as $line_) {
+                                    $centeredX = $this->getCenteredPosition($pdf, $line_, 10 * $bottomScale, $bottomCenterX, $bottomY_mm + (5 * $bottomScale) + (5 * $i * $bottomScale));
+                                    $pdf->Text($centeredX, $bottomY_mm + (5 * $bottomScale) + (5 * $i * $bottomScale), $line_);
+                                    $i++;
                                 }
                             }
                         }
@@ -1054,57 +1067,51 @@ class BookController extends Controller
                     $pdf->SetFont('sarabunextralight', '', 10 * $scale);
 
                     for ($i = 0; $i <= $lineCount; $i++) {
-                        $centeredX = $this->getCenteredPosition($pdf, $text[$i], 10 * $scale, $x, $y + (5 * $i * $scale));
-                        $pdf->Text($centeredX, $y + (5 * $i * $scale), $text[$i]);
+                        $centeredX = $this->getCenteredPosition($pdf, $text[$i], 10 * $scale, $centerX, $y_mm + (5 * $i * $scale));
+                        $pdf->Text($centeredX, $y_mm + (5 * $i * $scale), $text[$i]);
                     }
 
-                    $checkbox_text = '';
-                    $checkbox_x = 0;
-                    foreach ($checkedValues as $key => $value) {
+                    foreach ($checkedValues as $value) {
                         if ($value == 4) {
-                            $plus_y = 35 * $scale;
+                            
                             if ($imageBox) {
                                 $signatureX = ($imageBox['startX'] / 1.5) * 0.3528;
                                 $signatureY = ($imageBox['startY'] / 1.5) * 0.3528;
                                 $imgW = ($imageBox['width'] / 1.5) * 0.3528;
                                 $imgH = ($imageBox['height'] / 1.5) * 0.3528;
                             } else {
-                                $signatureX = $x - 25;
-                                $signatureY = $y + 3 * $scale + (5 * $lineCount * $scale);
+                                $signatureX = $x_mm - 25;
+                                $signatureY = $y_mm + 3 * $scale + (5 * $lineCount * $scale);
                                 $imgW = ($widthPx / 3.3) * 0.3528;
                                 $imgH = ($heightPx / 1.33) * 0.3528;
                             }
                             $pdf->Image(public_path('storage/users/' . auth()->user()->signature), $signatureX, $signatureY, $imgW, $imgH);
-                        } else {
-                            $plus_y = 5 * $scale;
+                        
                         }
                     }
+                    $pdf->SetFont('sarabunextralight', '', 10 * $bottomScale);
 
                     $i = 0;
-                    foreach ($checkedValues as $key => $value) {
-                        switch ($value) {
-                            case '1':
-                                $checkbox_text = '(' . $this->users->fullname . ')';
-                                break;
-                            case '2':
-                                $checkbox_text = str_replace('\n', '<br>', $this->permission_data->permission_name);
-                                break;
-                            case '3':
-                                $checkbox_text = convertDateToThai(date("Y-m-d"));
-                                break;
-                        }
-                        $text = explode("\n", $checkbox_text);
+                    foreach ($checkedValues as $value) {
                         if ($value != 4) {
-                            $stop = 0;
-                            foreach ($text as $text_) {
-                                if (count($text) > 1) {
-                                    if ($stop != 0) {
-                                        $i++;
-                                    }
-                                    $stop++;
-                                }
-                                $centeredX = $this->getCenteredPosition($pdf, $text_, 10 * $scale, $x, $y + $plus_y + (5 * $lineCount * $scale) + (5 * ($key + $i) * $scale));
-                                $pdf->Text($centeredX, $y + $plus_y + (5 * $lineCount * $scale) + (5 * ($key + $i) * $scale), $text_);
+                             switch ($value) {
+                                case '1':
+                                    $checkbox_text = '(' . $this->users->fullname . ')';
+                                    break;
+                                case '2':
+                                    $checkbox_text = str_replace('\n', '<br>', $this->permission_data->permission_name);
+                                    break;
+                                case '3':
+                                    $checkbox_text = convertDateToThai(date("Y-m-d"));
+                                    break;
+                                default:
+                                    $checkbox_text = '';
+                            }
+                            $lines = explode("\n", $checkbox_text);
+                            foreach ($lines as $line_) {
+                                $centeredX = $this->getCenteredPosition($pdf, $line_, 10 * $bottomScale, $bottomCenterX, $bottomY_mm + (5 * $bottomScale) + (5 * $i * $bottomScale));
+                                $pdf->Text($centeredX, $bottomY_mm + (5 * $bottomScale) + (5 * $i * $bottomScale), $line_);
+                                $i++;
                             }
                         }
                     }
@@ -1157,6 +1164,7 @@ class BookController extends Controller
                 $width  = $request->input('width');
                 $height = $request->input('height');
                 $imageBox = $request->input('imageBox');
+                $bottomBox = $request->input('bottomBox');
 
                 $this->editPdf_signature(
                     $input['positionX'],
@@ -1168,7 +1176,8 @@ class BookController extends Controller
                     $input['positionPages'],
                     $width,
                     $height,
-                    $imageBox
+                    $imageBox,
+                    $bottomBox
                 );
                 if ($input['positionPages'] == 2) {
                     $update->new_pages = $update->new_pages + 1;

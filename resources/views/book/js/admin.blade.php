@@ -1708,6 +1708,7 @@
             // Get latest box coordinates for textBox and imageBox
             var textBox = null;
             var imageBox = null;
+            var bottomBox = null;
             if (typeof signatureCoordinates !== 'undefined' && signatureCoordinates) {
                 if (signatureCoordinates.textBox) {
                     textBox = {
@@ -1715,6 +1716,14 @@
                         startY: signatureCoordinates.textBox.startY,
                         endX: signatureCoordinates.textBox.endX,
                         endY: signatureCoordinates.textBox.endY
+                    };
+                }
+                if (signatureCoordinates.bottomBox) {
+                    bottomBox = {
+                        startX: signatureCoordinates.bottomBox.startX,
+                        startY: signatureCoordinates.bottomBox.startY,
+                        endX: signatureCoordinates.bottomBox.endX,
+                        endY: signatureCoordinates.bottomBox.endY
                     };
                 }
                 if (signatureCoordinates.imageBox) {
@@ -1759,6 +1768,14 @@
                             width: width,
                             height: height
                         };
+                        if (bottomBox) {
+                            signatureData.bottomBox = {
+                                startX: bottomBox.startX,
+                                startY: bottomBox.startY,
+                                width: bottomBox.endX - bottomBox.startX,
+                                height: bottomBox.endY - bottomBox.startY
+                            };
+                        }
                         // If imageBox is present and checked, send its coordinates as well
                         if (imageBox && checkedValues.includes('4')) {
                             signatureData.imageBox = {
