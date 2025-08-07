@@ -86,15 +86,13 @@
             queueRenderPage(pageNum);
         }
 
-        // Reset dropdown and bind single change event
-        selectPage.innerHTML = '';
-        selectPage.onchange = function() {
+        selectPage.addEventListener('change', function() {
             let selectedPage = parseInt(this.value);
             if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
                 pageNum = selectedPage;
                 queueRenderPage(selectedPage);
             }
-        };
+        });
 
         pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
             pdfDoc = pdfDoc_;
@@ -110,9 +108,9 @@
         });
 
 
-        // Bind navigation buttons without stacking listeners
-        document.getElementById('next').onclick = onNextPage;
-        document.getElementById('prev').onclick = onPrevPage;
+        document.getElementById('next').addEventListener('click', onNextPage);
+        document.getElementById('prev').addEventListener('click', onPrevPage);
+
 
         // let markEventListener = null;
         // let markEventListenerInsert = null;
