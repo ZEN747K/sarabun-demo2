@@ -430,13 +430,14 @@ class BookController extends Controller
         if (!file_exists($filePath)) {
             return 'File not found!';
         }
+        $processedPath = $this->preparePdfForFpdi($filePath);
 
         $pdf = new Fpdi();
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
 
 
-        $pageCount = $pdf->setSourceFile($filePath);
+        $pageCount = $pdf->setSourceFile($processedPath);
         $stop_ = 0;
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $templateId = $pdf->importPage($pageNo);
@@ -499,7 +500,11 @@ class BookController extends Controller
 
         $outputPath = public_path('/storage/' . $data->file);
         $pdf->Output($outputPath, 'F');
+        if ($processedPath !== $filePath && file_exists($processedPath)) {
+            unlink($processedPath);
+        }
     }
+    
 
 
     public function send_to_admin(Request $request)
@@ -678,12 +683,13 @@ class BookController extends Controller
         if (!file_exists($filePath)) {
             return 'File not found!';
         }
+        $processedPath = $this->preparePdfForFpdi($filePath);
 
         $pdf = new Fpdi();
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
 
-        $pageCount = $pdf->setSourceFile($filePath);
+        $pageCount = $pdf->setSourceFile($processedPath);
         $stop_ = 0;
         $skip = 0;
 
@@ -753,6 +759,10 @@ class BookController extends Controller
 
         $outputPath = public_path('/storage/' . $data['file']);
         $pdf->Output($outputPath, 'F');
+
+        if ($processedPath !== $filePath && file_exists($processedPath)) {
+            unlink($processedPath);
+        }
     }
 
     public function checkbox_send()
@@ -975,12 +985,13 @@ class BookController extends Controller
         if (!file_exists($filePath)) {
             return 'File not found!';
         }
+        $processedPath = $this->preparePdfForFpdi($filePath);
 
         $pdf = new Fpdi();
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
 
-        $pageCount = $pdf->setSourceFile($filePath);
+        $pageCount = $pdf->setSourceFile($processedPath);
         $stop_ = 0;
         $skip = 0;
 
@@ -1121,6 +1132,9 @@ class BookController extends Controller
 
         $outputPath = public_path('/storage/' . $data->file);
         $pdf->Output($outputPath, 'F');
+        if ($processedPath !== $filePath && file_exists($processedPath)) {
+            unlink($processedPath);
+        }
     }
 
     function getCenteredPosition($pdf, $text, $fontSize, $startX, $startY)
@@ -1295,12 +1309,13 @@ class BookController extends Controller
         if (!file_exists($filePath)) {
             return 'File not found!';
         }
+        $processedPath = $this->preparePdfForFpdi($filePath);
 
         $pdf = new Fpdi();
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
 
-        $pageCount = $pdf->setSourceFile($filePath);
+        $pageCount = $pdf->setSourceFile($processedPath);
 
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $templateId = $pdf->importPage($pageNo);
@@ -1322,6 +1337,9 @@ class BookController extends Controller
 
         $outputPath = public_path('/storage/' . $data->file);
         $pdf->Output($outputPath, 'F');
+        if ($processedPath !== $filePath && file_exists($processedPath)) {
+            unlink($processedPath);
+        }
     }
 
     public function directory_save(Request $request)
@@ -1466,10 +1484,11 @@ class BookController extends Controller
         if (!file_exists($filePath)) {
             return 'File not found!';
         }
+        $processedPath = $this->preparePdfForFpdi($filePath);
         $pdf = new Fpdi();
         $pdf->setAutoPageBreak(false, 0);
         $pdf->SetMargins(210, 0, 0);
-        $pageCount = $pdf->setSourceFile($filePath);
+        $pageCount = $pdf->setSourceFile($processedPath);
         $stop_ = 0;
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $templateId = $pdf->importPage($pageNo);
@@ -1533,5 +1552,25 @@ class BookController extends Controller
         }
         $outputPath = public_path('/storage/' . $data->file);
         $pdf->Output($outputPath, 'F');
+        if ($processedPath !== $filePath && file_exists($processedPath)) {
+            unlink($processedPath);
+        }
+    }
+
+    private function preparePdfForFpdi($filePath)
+    {
+        $gsPath = trim(shell_exec('command -v gs'));
+        if ($gsPath === '') {
+            return $filePath;
+        }
+
+        $tempPath = storage_path('app/' . uniqid('fpdi_') . '.pdf');
+        $command = escapeshellcmd($gsPath) . ' -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=' . escapeshellarg($tempPath) . ' ' . escapeshellarg($filePath) . ' 2>&1';
+        exec($command, $output, $returnVar);
+        if ($returnVar === 0 && file_exists($tempPath)) {
+            return $tempPath;
+        }
+
+        return $filePath;
     }
 }
