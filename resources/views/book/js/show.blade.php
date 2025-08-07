@@ -13,6 +13,7 @@
     var pdfContainer = document.getElementById('pdf-container');
     var browseBtn = document.getElementById('browse-btn');
     var editMode = false;
+    var currentPdfPage = 1;
 
     function pdf(url) {
         var pdfDoc = null,
@@ -26,13 +27,9 @@
             pdfCtxInsert = pdfCanvasInsert.getContext('2d'),
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
-            selectPage = document.getElementById('page-select');
+            pageNumberDisplay = document.getElementById('page-number');
 
-        // Clear any existing page options and handlers so navigating
-        // between documents doesn't duplicate entries or events.
-        selectPage.innerHTML = '';
-        selectPage.onchange = null;
-
+        pageNumberDisplay.textContent = '';
         
 
         var markCoordinates = null;
@@ -66,7 +63,8 @@
                 });
             });
 
-            selectPage.value = num;
+            currentPdfPage = num;
+            pageNumberDisplay.textContent = num + '/' + pdfDoc.numPages;
         }
 
         function queueRenderPage(num) {
@@ -93,13 +91,13 @@
             queueRenderPage(pageNum);
         }
 
-        selectPage.addEventListener('change', function() {
-            let selectedPage = parseInt(this.value);
-            if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
-                pageNum = selectedPage;
-                queueRenderPage(selectedPage);
-            }
-        });
+        // selectPage.addEventListener('change', function() {
+        //     let selectedPage = parseInt(this.value);
+        //     if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
+        //         pageNum = selectedPage;
+        //         queueRenderPage(selectedPage);
+        //     }
+        // });
 
         pdfjsLib.getDocument({
             url: url,
@@ -107,12 +105,12 @@
             disableRange: true
         }).promise.then(function(pdfDoc_) {
             pdfDoc = pdfDoc_;
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                let option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                selectPage.appendChild(option);
-            }
+            // for (let i = 1; i <= pdfDoc.numPages; i++) {
+            //     let option = document.createElement('option');
+            //     option.value = i;
+            //     option.textContent = i;
+            //     selectPage.appendChild(option);
+            // }
 
             renderPage(pageNum);
             document.getElementById('add-stamp').disabled = false;
@@ -148,7 +146,7 @@
             } else {
                 startX = (markCanvas.width - defaultWidth) / 2;
                 startY = (markCanvas.height - defaultHeight) / 2;
-                $('#positionPages').val(1);
+                $('#positionPages').val(pageNum);
             }
             var endX = startX + defaultWidth;
             var endY = startY + defaultHeight;
@@ -750,7 +748,7 @@
         var positionPages = $('#positionPages').val();
         var positionWidth = $('#positionWidth').val();
         var positionHeight = $('#positionHeight').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = currentPdfPage;
         if (id != '' && positionX != '' && positionY != '') {
             Swal.fire({
                 title: "ยืนยันการลงบันทึกเวลา",
@@ -854,7 +852,7 @@
         var id = $('#id').val();
         var positionX = $('#positionX').val();
         var positionY = $('#positionY').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = currentPdfPage;
         var number_id = $('#number_id').val();
         if (id != '' && positionX != '' && positionY != '') {
             Swal.fire({
