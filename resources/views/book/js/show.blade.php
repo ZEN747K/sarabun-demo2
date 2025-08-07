@@ -28,6 +28,13 @@
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
 
+        // Clear any existing page options and handlers so navigating
+        // between documents doesn't duplicate entries or events.
+        selectPage.innerHTML = '';
+        selectPage.onchange = null;
+
+        
+
         var markCoordinates = null;
 
         document.getElementById('add-stamp').disabled = true;
@@ -94,7 +101,11 @@
             }
         });
 
-        pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+        pdfjsLib.getDocument({
+            url: url,
+            withCredentials: true,
+            disableRange: true
+        }).promise.then(function(pdfDoc_) {
             pdfDoc = pdfDoc_;
             for (let i = 1; i <= pdfDoc.numPages; i++) {
                 let option = document.createElement('option');
@@ -108,8 +119,8 @@
         });
 
 
-        document.getElementById('next').addEventListener('click', onNextPage);
-        document.getElementById('prev').addEventListener('click', onPrevPage);
+        document.getElementById('next').onclick = onNextPage;
+        document.getElementById('prev').onclick = onPrevPage;
 
 
         // let markEventListener = null;
