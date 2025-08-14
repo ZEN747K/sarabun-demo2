@@ -446,7 +446,7 @@ class BookController extends Controller
 
             if ($positionPages == 2) {
                 if ($stop_ == 0) {
-                    $pdf->AddPage();
+                    // $pdf->AddPage();
 
                     $fontPath = resource_path('fonts/sarabunextralight.php');
                     $pdf->AddFont('sarabunextralight', '', $fontPath);
@@ -1568,7 +1568,14 @@ class BookController extends Controller
         $command = escapeshellcmd($gsPath) . ' -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=' . escapeshellarg($tempPath) . ' ' . escapeshellarg($filePath) . ' 2>&1';
         exec($command, $output, $returnVar);
         if ($returnVar === 0 && file_exists($tempPath)) {
-            return $tempPath;
+            $processedSize = filesize($tempPath);
+            $originalSize = filesize($filePath);
+            if ($processedSize > 0 && $originalSize > 0 && $processedSize > ($originalSize * 0.1)) {
+                return $tempPath;
+            }
+        }
+        if (file_exists($tempPath)) {
+            @unlink($tempPath);
         }
 
         return $filePath;
