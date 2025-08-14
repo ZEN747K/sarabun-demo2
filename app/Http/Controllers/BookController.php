@@ -1567,11 +1567,8 @@ class BookController extends Controller
         $tempPath = storage_path('app/' . uniqid('fpdi_') . '.pdf');
         $command = escapeshellcmd($gsPath) . ' -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=' . escapeshellarg($tempPath) . ' ' . escapeshellarg($filePath) . ' 2>&1';
         exec($command, $output, $returnVar);
-        if ($returnVar === 0 && file_exists($tempPath) && filesize($tempPath) > 0) {
+        if ($returnVar === 0 && file_exists($tempPath)) {
             return $tempPath;
-        }
-        if (file_exists($tempPath)) {
-            @unlink($tempPath);
         }
 
         return $filePath;
