@@ -55,6 +55,7 @@ Route::middleware('auth.admin')->group(function () {
     Route::post('/book/edit_stamp', [BookController::class, 'edit_stamp'])->name('book.edit_stamp');
     Route::get('/book/stamp_position/{id}', [BookController::class, 'get_stamp_position'])->name('book.stamp_position');
     Route::post('/book/check_admin', [BookController::class, 'check_admin'])->name('book.check_admin');
+    Route::get('/book/created_position/{id}', [BookController::class, 'created_position'])->name('book.created_position');
 
     Route::get('/users/listUsers', [UsersController::class, 'listUsers'])->name('users.listUsers');
     Route::get('/users/listData', [UsersController::class, 'listData'])->name('users.listData');

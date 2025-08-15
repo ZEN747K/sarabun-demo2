@@ -531,6 +531,7 @@
 
     function openPdf(url, id, status, type, is_check = '', number_id, position_id) {
         $('.btn-default').hide();
+        document.getElementById('reject-book').disabled = true;
         $('#div-showPdf').show();
         $('#div-uploadPdf').hide();
         editMode = false;
@@ -590,6 +591,12 @@
                 }
             }
         }
+        $.get('/book/created_position/' + id, function(res) {
+            if (status >= 3 && status < 15 && position_id != res.position_id) {
+                document.getElementById('reject-book').disabled = false;
+                $('#reject-book').show();
+            }
+        });
         // }
         resetMarking();
         removeMarkListener();
@@ -1215,6 +1222,55 @@
     $('#insert-pages').click(function(e) {
         e.preventDefault();
         $('#insert_tab').show();
+    });
+
+    $('#reject-book').click(function (e) {
+        e.preventDefault();
+        Swal.fire({
+            title: "",
+            text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
+            icon: "warning",
+            input: 'textarea',
+            inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ',
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonText: "ตกลง",
+            preConfirm: (note) => {
+                if (!note) {
+                    Swal.showValidationMessage('กรุณากรอกเหตุผล');
+                }
+                return note;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var id = $('#id').val();
+                var note = result.value;
+                $.ajax({
+                    type: "post",
+                    url: "/book/reject",
+                    data: {
+                        id: id,
+                        note: note,
+                    },
+                    dataType: "json",
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    success: function (response) {
+                        if (response.status) {
+                            Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error");
+                        }
+                    }
+                });
+            }
+        });
     });
 
     $(document).ready(function() {

@@ -1290,6 +1290,7 @@
 
         function openPdf(url, id, status, type, is_check = '', number_id, position_id) {
             $('.btn-default').hide();
+            document.getElementById('reject-book').disabled = true;
             document.getElementById('add-stamp').disabled = false;
             document.getElementById('save-stamp').disabled = true;
             document.getElementById('send-save').disabled = true;
@@ -1335,10 +1336,12 @@
                 document.getElementById('directory-save').disabled = false;
                 $('#directory-save').show();
             }
-            if (status >= 3 && status < 15) {
-                document.getElementById('reject-book').disabled = false;
-                $('#reject-book').show();
-            }
+            $.get('/book/created_position/' + id, function(res) {
+                if (status >= 3 && status < 15 && position_id != res.position_id) {
+                    document.getElementById('reject-book').disabled = false;
+                    $('#reject-book').show();
+                }
+            });
             resetMarking();
             removeMarkListener();
         }
@@ -1938,7 +1941,7 @@
                 text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
                 icon: "warning",
                 input: 'textarea',
-                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ',
+                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ11',
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",

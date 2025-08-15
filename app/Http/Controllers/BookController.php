@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Webklex\IMAP\Facades\Client;
 use Webklex\PHPIMAP\ClientManager;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 class BookController extends Controller
 {
 
@@ -1381,51 +1382,112 @@ class BookController extends Controller
         }
         return response()->json($data);
     }
-    public function reject(Request $request)
-    {
-        $data['status'] = false;
-        $data['message'] = '';
-        $id = $request->input('id');
-        $note = $request->input('note');
+    public function reject(Request $request)  
+{
+    $data['status'] = false;
+    $data['message'] = '';
+    $id = $request->input('id');
+    $note = $request->input('note');
+    $book = Book::find($id);
+
+    if ($book) {
+        if (auth()->id() == $book->created_by) {
+            $data['message'] = 'ผู้นำเข้าหนังสือไม่สามารถปฏิเสธได้';
+            return response()->json($data);
+        }
+
         $log = Log_status_book::where('position_id', $this->position_id)
             ->where('book_id', $id)
+            ->orderBy('id', 'desc')
             ->first();
+
         if ($log) {
-            $log->status = 16;
-            $log->updated_at = date('Y-m-d H:i:s');
-            if ($log->save()) {
-                $book = Book::find($id);
-                $firstUser = User::find($book->created_by);
-                $firstPosition = optional($firstUser)->position_id ?: auth()->user()->position_id;
-                $oldPath = $log->file;
-                $file = str_replace($log->position_id . '/uploads/', '', $log->file);
-                $newPath = 'directory/' . $firstPosition . '/' . $file;
-                if (Storage::exists($oldPath)) {
-                    Storage::copy($oldPath, $newPath);
-                }
-                $directorylogs = new Directory_log();
-                $directorylogs->book_id = $id;
-                $directorylogs->position_id = $firstPosition;
-                $directorylogs->logs_id = $log->id;
-                $directorylogs->file = $file;
-                $directorylogs->created_at = date('Y-m-d H:i:s');
-                $directorylogs->created_by = auth()->user()->id;
-                $directorylogs->updated_at = date('Y-m-d H:i:s');
-                $directorylogs->updated_by = auth()->user()->id;
-                $directorylogs->save();
-                log_active([
-                    'users_id' => auth()->user()->id,
-                    'status' => 16,
-                    'datetime' => date('Y-m-d H:i:s'),
-                    'detail' => 'ปฏิเสธหนังสือ' . ($note ? ' <span style="color:red; font-weight:bold;"> หมายเหตุ :</span> ' . $note : ''),
-                    'book_id' => $id,
-                    'position_id' => $log->position_id
-                ]);
-                $data['status'] = true;
-                $data['message'] = 'ปฏิเสธหนังสือเรียบร้อย';
+            // ลดค่า status ของ book ลง 1
+            $book->status = $book->status - 1;
+            $book->save();
+
+            // ลดค่า status ของ log ทั้งหมดที่เกี่ยวข้อง
+            $logs = Log_status_book::where('book_id', $id)->get();
+            foreach ($logs as $logItem) {
+                $logItem->status = $logItem->status - 1;
+                $logItem->updated_at = now();
+                $logItem->save();
             }
+
+            $file = str_replace($log->position_id . '/uploads/', '', $log->file);
+
+            $previousLog = Log_status_book::where('book_id', $id)
+                ->where('id', '<', $log->id)
+                ->orderBy('id', 'desc')
+                ->first();
+            $previousPosition = $previousLog ? $previousLog->position_id : optional(User::find($book->created_by))->position_id;
+            if (!$previousPosition) {
+                $previousPosition = auth()->user()->position_id;
+            }
+
+            $uploadPath = $previousPosition . '/uploads/' . $file;
+            if (!Storage::exists($previousPosition . '/uploads')) {
+                Storage::makeDirectory($previousPosition . '/uploads');
+            }
+            if (Storage::exists($log->file)) {
+                Storage::copy($log->file, $uploadPath);
+                Storage::copy($log->file, 'directory/' . $previousPosition . '/' . $file);
+            }
+
+            if ($previousLog) {
+                $previousLog->status = $previousLog->status - 1;
+                $previousLog->file = $uploadPath;
+                $previousLog->updated_at = now();
+                $previousLog->save();
+            } else {
+                $previousLog = new Log_status_book();
+                $previousLog->book_id = $id;
+                $previousLog->status = 2; // ถ้าไม่มีค่าเก่า ตั้งค่าเริ่มต้น (เช่น 2)
+                $previousLog->datetime = now();
+                $previousLog->file = $uploadPath;
+                $previousLog->position_id = $previousPosition;
+                $previousLog->save();
+            }
+
+            $directorylogs = new Directory_log();
+            $directorylogs->book_id = $id;
+            $directorylogs->position_id = $previousPosition;
+            $directorylogs->logs_id = $log->id;
+            $directorylogs->file = $file;
+            $directorylogs->created_at = now();
+            $directorylogs->created_by = auth()->user()->id;
+            $directorylogs->updated_at = now();
+            $directorylogs->updated_by = auth()->user()->id;
+            $directorylogs->save();
+
+            log_active([
+                'users_id' => auth()->user()->id,
+                'status' => $log->status - 1,
+                'datetime' => now(),
+                'detail' => 'ปฏิเสธหนังสือ' . ($note ? ' <span style="color:red; font-weight:bold;"> หมายเหตุ :</span> ' . $note : ''),
+                'book_id' => $id,
+                'position_id' => $log->position_id
+            ]);
+
+            $data['status'] = true;
+            $data['message'] = 'ปฏิเสธหนังสือเรียบร้อย';
         }
-        return response()->json($data);
+    }
+
+    return response()->json($data);
+}
+
+
+
+    public function created_position($id)
+    {
+        $book = Book::find($id);
+        $position = null;
+        if ($book) {
+            $user = User::find($book->created_by);
+            $position = optional($user)->position_id;
+        }
+        return response()->json(['position_id' => $position]);
     }
     public function check_admin(Request $request)
     {
