@@ -43,6 +43,51 @@ class UsersController extends Controller
         $data['function_key'] = __FUNCTION__;
         return view('users.index', $data);
     }
+    public function add()
+    {
+        if ($this->permission_id != 9) {
+            return redirect('/book/show');
+        }
+        $data['permission_data'] = $this->permission_data;
+        $data['function_key'] = 'addUser';
+        return view('users.add', $data);
+    }
+
+    public function addForm()
+    {
+        if ($this->permission_id != 9) {
+            return redirect('/book/show');
+        }
+        $data['permission_data'] = $this->permission_data;
+        $data['function_key'] = 'addUser';
+        $data['position'] = Position::get();
+        return view('users.addForm', $data);
+    }
+
+    public function insertUser(Request $request)
+    {
+        $input = $request->input();
+        $users = new User();
+        if (isset($input['fullname'])) {
+            $users->fullname = $input['fullname'];
+        }
+        if (isset($input['email'])) {
+            $users->email = $input['email'];
+        }
+        $password = !empty($input['password']) ? $input['password'] : '4321';
+        $users->password = password_hash($password, PASSWORD_DEFAULT);
+        if (isset($input['position_id'])) {
+            $users->position_id = $input['position_id'];
+        }
+        if (isset($input['permission_id'])) {
+            $users->permission_id = $input['permission_id'];
+        }
+        $users->created_at = date('Y-m-d H:i:s');
+        $users->updated_at = date('Y-m-d H:i:s');
+        if ($users->save()) {
+            return redirect()->route('users.add')->with('success', 'เพิ่มผู้ใช้สำเร็จ');
+        }
+    }
 
     public function listData()
     {

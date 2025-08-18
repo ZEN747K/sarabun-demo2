@@ -58,6 +58,9 @@ Route::middleware('auth.admin')->group(function () {
     Route::get('/book/created_position/{id}', [BookController::class, 'created_position'])->name('book.created_position');
 
     Route::get('/users/listUsers', [UsersController::class, 'listUsers'])->name('users.listUsers');
+    Route::get('/users/add', [UsersController::class, 'add'])->name('users.add');
+    Route::get('/users/add/form', [UsersController::class, 'addForm'])->name('users.addForm');
+    Route::post('/users/add/save', [UsersController::class, 'insertUser'])->name('users.insertUser');
     Route::get('/users/listData', [UsersController::class, 'listData'])->name('users.listData');
     Route::get('/users/edit/{id}', [UsersController::class, 'edit'])->name('users.edit');
     Route::post('/users/save', [UsersController::class, 'save'])->name('users.save');

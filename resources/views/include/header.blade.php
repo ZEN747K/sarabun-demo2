@@ -8,6 +8,7 @@
                 @endif
                 <a href="{{url('book/show')}}" type="button" class="btn btn-outline-primary {{($function_key == 'show') ? 'active' : ''}}" style="margin-right:10px">รายการหนังสือ</a>
                 @if(auth()->user()->permission_id == 9)
+                <a href="{{url('users/add')}}" type="button" class="btn btn-outline-primary {{($function_key == 'addUser') ? 'active' : ''}}" style="margin-right:10px">เพิ่ม User</a>
                 <a href="{{url('users/listUsers')}}" type="button" class="btn btn-outline-primary {{($function_key == 'listUsers') ? 'active' : ''}}" style="margin-right:10px">ข้อมูลสมาชิก</a>
                 <a href="{{url('permission')}}" type="button" class="btn btn-outline-primary {{($function_key == 'permission') ? 'active' : ''}}" style="margin-right:10px">สิทธิการใช้งาน</a>
                 @endif
