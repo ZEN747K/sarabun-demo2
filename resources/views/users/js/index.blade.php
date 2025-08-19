@@ -19,7 +19,11 @@
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Thai.json"
         },
-        columns: [{
+        columns: [
+            {
+                data: 'email',
+            },
+            {
                 data: 'fullname',
             },
             {

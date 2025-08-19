@@ -17,6 +17,7 @@
             <table id="example" class="display">
                 <thead>
                     <tr>
+                        <th>email</th>
                         <th>ชื่อ</th>
                         <th>ตำแหน่ง</th>
                         <th>หน่วยงาน</th>
