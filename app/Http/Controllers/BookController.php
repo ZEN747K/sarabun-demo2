@@ -460,7 +460,7 @@ class BookController extends Controller
                     $height = ($heightPx / 1.5) * 0.3528;
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10 * $scale);
-                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลพระอาจารย์');
                     $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
                     $pdf->SetFont('sarabunextralight', '', 8 * $scale);
                     $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.............................................................');
@@ -485,7 +485,7 @@ class BookController extends Controller
                     $height = ($heightPx / 1.5) * 0.3528;
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10 * $scale);
-                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลพระอาจารย์');
                     $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
                     $pdf->SetFont('sarabunextralight', '', 8 * $scale);
                     $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.............................................................');
@@ -1572,7 +1572,7 @@ class BookController extends Controller
                     $pdf->Rect($x, $y, $width, $height, 'F');
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10 * $scale);
-                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลพระอาจารย์');
                     $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
                     $pdf->SetFont('sarabunextralight', '', 8 * $scale);
                     $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.......................................................');
@@ -1599,7 +1599,7 @@ class BookController extends Controller
                     $pdf->Rect($x, $y, $width, $height, 'F');
                     $pdf->Rect($x, $y, $width, $height);
                     $pdf->SetFont('sarabunextralight', '', 10 * $scale);
-                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลแปลงยาว');
+                    $pdf->Text($x + (1 * $scale), $y + (2 * $scale), 'องค์การบริหารส่วนตำบลพระอาจารย์');
                     $pdf->Text($x + (21 * $scale), $y + (8.5 * $scale), numberToThaiDigits($data->inputBookregistNumber));
                     $pdf->SetFont('sarabunextralight', '', 8 * $scale);
                     $pdf->Text($x + (1 * $scale), $y + (10 * $scale), 'รับที่.......................................................');

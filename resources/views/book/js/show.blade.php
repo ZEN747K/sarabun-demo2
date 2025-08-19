@@ -165,7 +165,7 @@
             $('#positionWidth').val(defaultWidth);
             $('#positionHeight').val(defaultHeight);
 
-            drawTextHeader('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลแปลงยาว');
+            drawTextHeader('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลพระอาจารย์');
             drawTextHeader('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
             drawTextHeader('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
             drawTextHeader('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');
@@ -195,7 +195,7 @@
                 // Draw the box using current coordinates (do not overwrite endX/endY)
                 drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
                 // Draw text with scaled font and position
-                drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลแปลงยาว');
+                drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลพระอาจารย์');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 55 * scale, 'รับที่..........................................................');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 80 * scale, 'วันที่.........เดือน......................พ.ศ.........');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 100 * scale, 'เวลา......................................................น.');
@@ -353,7 +353,7 @@
                 $('#positionWidth').val(213);
                 $('#positionHeight').val(115);
 
-                drawTextHeaderInsert('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลแปลงยาว');
+                drawTextHeaderInsert('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลพระอาจารย์');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');

@@ -29,6 +29,7 @@ Route::get('/', function () {
 Route::post('/login/auth', [LoginController::class, 'auth'])->name('login.auth');
 Route::get('/login/logout', [LoginController::class, 'logout'])->name('login.logout');
 
+
 Route::middleware('auth.admin')->group(function () {
     Route::get('/book', [BookController::class, 'index'])->name('book.index');
     Route::get('/book/getEmail', [BookController::class, 'getEmail'])->name('book.getEmail');

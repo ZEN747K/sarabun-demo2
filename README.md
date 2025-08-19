@@ -1,2 +1,2 @@
-# plaengyao
-องค์การบริหารส่วนตำบลแปลงยาว
+# Phra Achan Subdistrict Administrative Organization
+องค์การบริหารส่วนตำบลพระอาจารย์
