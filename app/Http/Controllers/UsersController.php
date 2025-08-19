@@ -64,43 +64,30 @@ class UsersController extends Controller
         return view('users.addForm', $data);
     }
 
-    public function insertUser(Request $request) 
-{
-    $input = $request->input();
-    $users = new User();
-
-    if (isset($input['fullname'])) {
-        $users->fullname = $input['fullname'];
+    public function insertUser(Request $request)
+    {
+        $input = $request->input();
+        $users = new User();
+        if (isset($input['fullname'])) {
+            $users->fullname = $input['fullname'];
+        }
+        if (isset($input['email'])) {
+            $users->email = $input['email'];
+        }
+        $password = !empty($input['password']) ? $input['password'] : '4321';
+        $users->password = password_hash($password, PASSWORD_DEFAULT);
+        if (isset($input['position_id'])) {
+            $users->position_id = $input['position_id'];
+        }
+        if (isset($input['permission_id'])) {
+            $users->permission_id = $input['permission_id'];
+        }
+        $users->created_at = date('Y-m-d H:i:s');
+        $users->updated_at = date('Y-m-d H:i:s');
+        if ($users->save()) {
+            return redirect()->route('users.add')->with('success', 'เพิ่มผู้ใช้สำเร็จ');
+        }
     }
-
-    if (isset($input['email'])) {
-        $users->email = $input['email'];
-    }
-
-    
-
-    // username default เป็น null
-    $users->username = $input['username'] ?? null;
-
-    $password = !empty($input['password']) ? $input['password'] : '4321';
-    $users->password = password_hash($password, PASSWORD_DEFAULT);
-
-    if (isset($input['position_id'])) {
-        $users->position_id = $input['position_id'];
-    }
-
-    if (isset($input['permission_id'])) {
-        $users->permission_id = $input['permission_id'];
-    }
-
-    $users->created_at = date('Y-m-d H:i:s');
-    $users->updated_at = date('Y-m-d H:i:s');
-
-    if ($users->save()) {
-        return redirect()->route('users.add')->with('success', 'เพิ่มผู้ใช้สำเร็จ');
-    }
-}
-
 
     public function listData()
     {
@@ -264,10 +251,9 @@ class UsersController extends Controller
             $update->updated_by = auth()->user()->id;
             $update->updated_at = date('Y-m-d H:i:s');
             if ($update->save()) {
-                return redirect()->route('users.listUsers')->with('success', 'แก้ไขข้อมูลสำเร็จ');
-            } else {
-                return redirect('/users/edit/' . $input['id'])->with('success', 'แก้ไขข้อมูลสำเร็จ');
+                return redirect()->route('users.permission', ['id' => $update->users_id])->with('success', 'แก้ไขข้อมูลสำเร็จ');
             }
+            return redirect()->back()->with('error', 'แก้ไขข้อมูลไม่สำเร็จ');
         }
     }
 
@@ -297,15 +283,27 @@ class UsersController extends Controller
         if (count($info) > 0) {
             foreach ($info as $rs) {
                 $selected = '';
-                if (isset($input['position_id'])) {
-                    if ($input['position_id'] == $input['id']) {
-                        $selected = 'selected';
-                    }
-                }
+                if (isset($input['permission_id']) && $input['permission_id'] == $rs->id) {
+                    $selected = 'selected';
                 $html .= '<option value="' . $rs->id . '" ' . $selected . '>' . $rs->permission_name . '</option>';
             }
         }
-
-        return response()->json($html);
     }
+
+    return response()->json($html);
+}
+public function deletePermission($id)
+    {
+        if ($this->permission_id != 9) {
+            return redirect('/book/show');
+        }
+        $info = Users_permission::find($id);
+        if ($info) {
+            $userId = $info->users_id;
+            $info->delete();
+            return redirect()->route('users.permission', ['id' => $userId])->with('success', 'ลบข้อมูลสำเร็จ');
+        }
+        return redirect()->back()->with('error', 'ไม่พบข้อมูล');
+    }
+    
 }
