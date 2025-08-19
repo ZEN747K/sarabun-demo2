@@ -280,16 +280,15 @@ class UsersController extends Controller
         $input = $request->input();
         $info = Permission::where('position_id', $input['id'])->get();
         $html = '<option value="" disabled>กรุณาเลือก</option>';
-        if (count($info) > 0) {
-            foreach ($info as $rs) {
-                $selected = '';
-                if (isset($input['permission_id']) && $input['permission_id'] == $rs->id) {
-                    $selected = 'selected';
-                $html .= '<option value="' . $rs->id . '" ' . $selected . '>' . $rs->permission_name . '</option>';
+    if (count($info) > 0) {
+        foreach ($info as $rs) {
+            $selected = '';
+            if (isset($input['permission_id']) && $input['permission_id'] == $rs->id) {
+                $selected = 'selected';
             }
+            $html .= '<option value="' . $rs->id . '" ' . $selected . '>' . $rs->permission_name . '</option>';
         }
     }
-
     return response()->json($html);
 }
 public function deletePermission($id)

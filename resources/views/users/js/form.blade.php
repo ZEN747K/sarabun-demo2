@@ -1,7 +1,7 @@
 @section('script')
 <script>
     var select_position = $('#select_position').val();
-    var position_id = '<?= isset($info) ? $info->position_id : '' ?>';
+    var permission_id = '<?= isset($info) ? $info->permission_id : '' ?>';
 
     $('#select_position').change(function(e) {
         e.preventDefault();
@@ -27,7 +27,7 @@
                 url: "/users/getPermission",
                 data: {
                     id: select_position,
-                    position_id: position_id
+                    permission_id: permission_id
                 },
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
