@@ -135,7 +135,7 @@
             var markCtx = markCanvas.getContext('2d');
             var rect = markCanvas.getBoundingClientRect();
             // Default position: center of canvas
-            var defaultWidth = 213;
+            var defaultWidth = 220;
             var defaultHeight = 115;
             var startX;
             var startY;
@@ -165,7 +165,7 @@
             $('#positionWidth').val(defaultWidth);
             $('#positionHeight').val(defaultHeight);
 
-            drawTextHeader('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลพระอาจารย์');
+            drawTextHeader('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลแปลงยาว');
             drawTextHeader('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
             drawTextHeader('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
             drawTextHeader('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');
@@ -184,7 +184,7 @@
                 var boxH = markCoordinates.endY - markCoordinates.startY;
                 $('#positionWidth').val(boxW);
                 $('#positionHeight').val(boxH);
-                var defaultWidth = 213;
+                var defaultWidth = 220;
                 var defaultHeight = 115;
                 // Use the smaller scale of width/height to keep aspect ratio
                 var scaleW = boxW / defaultWidth;
@@ -195,7 +195,7 @@
                 // Draw the box using current coordinates (do not overwrite endX/endY)
                 drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
                 // Draw text with scaled font and position
-                drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลพระอาจารย์');
+                drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลแปลงยาว');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 55 * scale, 'รับที่..........................................................');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 80 * scale, 'วันที่.........เดือน......................พ.ศ.........');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 100 * scale, 'เวลา......................................................น.');
@@ -337,7 +337,7 @@
                 var startX = (e.clientX - rect.left);
                 var startY = (e.clientY - rect.top);
 
-                var endX = startX + 213;
+                var endX = startX + 220;
                 var endY = startY + 115;
 
                 markCoordinates = {
@@ -353,7 +353,7 @@
                 $('#positionWidth').val(213);
                 $('#positionHeight').val(115);
 
-                drawTextHeaderInsert('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลพระอาจารย์');
+                drawTextHeaderInsert('15px Sarabun', startX + 3, startY + 25, 'องค์การบริหารส่วนตำบลแปลงยาว');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 55, 'รับที่..........................................................');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
                 drawTextHeaderInsert('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');

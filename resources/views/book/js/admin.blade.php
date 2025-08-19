@@ -132,7 +132,7 @@
                 var rect = markCanvas.getBoundingClientRect();
 
                 // Default position: center of canvas
-                var defaultWidth = 213;
+                var defaultWidth = 220;
                 var defaultHeight = 115;
                 var startX = (markCanvas.width - defaultWidth) / 2;
                 var startY = (markCanvas.height - defaultHeight) / 2;
@@ -183,7 +183,7 @@
                     // Calculate scale for both box and text based on current box size
                     var boxW = markCoordinates.endX - markCoordinates.startX;
                     var boxH = markCoordinates.endY - markCoordinates.startY;
-                    var defaultWidth = 213;
+                    var defaultWidth = 220;
                     var defaultHeight = 115;
                     // Use the smaller scale of width/height to keep aspect ratio
                     var scaleW = boxW / defaultWidth;
@@ -352,7 +352,7 @@
                     var startX = (e.clientX - rect.left);
                     var startY = (e.clientY - rect.top);
 
-                    var endX = startX + 213;
+                    var endX = startX + 220;
                     var endY = startY + 115;
 
                     markCoordinates = {
@@ -425,7 +425,7 @@
                                 // Only create initial coordinates on first click
                                 if (!signatureCoordinates) {
                                     // Default position and sizes
-                                    var defaultTextWidth = 213;
+                                    var defaultTextWidth = 220;
                                     var defaultTextHeight = 40;
                                     var defaultBottomBoxHeight = 80;
                                     var defaultImageWidth = 240;
@@ -510,7 +510,7 @@
 
                                     // Draw signature text in top box
                                     var textScale = Math.min(
-                                        (textBox.endX - textBox.startX) / 213,
+                                        (textBox.endX - textBox.startX) / 220,
                                         (textBox.endY - textBox.startY) / 40
                                     );
                                     textScale = Math.max(0.5, Math.min(2.5, textScale));
@@ -538,7 +538,7 @@
 
                                     // Draw checkbox content in bottom box
                                     var bottomScale = Math.min(
-                                        (bottomBox.endX - bottomBox.startX) / 213,
+                                        (bottomBox.endX - bottomBox.startX) / 220,
                                         (bottomBox.endY - bottomBox.startY) / 80
                                     );
                                     bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
@@ -773,7 +773,7 @@
                                 var rect = markCanvas.getBoundingClientRect();
 
                                 // Default position
-                                var defaultTextWidth = 213;
+                                var defaultTextWidth = 220;
                                 var defaultTextHeight = 60;
                                 var defaultImageWidth = 240;
                                 var defaultImageHeight = 130;
@@ -847,7 +847,7 @@
 
                                     // Draw text content
                                     var textScale = Math.min(
-                                        (textBox.endX - textBox.startX) / 213,
+                                        (textBox.endX - textBox.startX) / 220,
                                         (textBox.endY - textBox.startY) / 60
                                     );
                                     textScale = Math.max(0.5, Math.min(2.5, textScale));

@@ -23,13 +23,19 @@
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Thai.json"
         },
-        columns: [{
+        columns: [
+            {
                 data: 'permission_name',
                 class: 'text-center',
             },
             {
                 data: 'position_name',
                 class: 'text-center',
+            },
+            {
+                data: 'can_status_input',
+                class: 'text-center',
+                orderable: false,
             },
             {
                 data: 'action',

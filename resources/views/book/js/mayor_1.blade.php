@@ -244,7 +244,7 @@
                             var startX = (e.clientX - rect.left);
                             var startY = (e.clientY - rect.top);
 
-                            var endX = startX + 213;
+                            var endX = startX + 220;
                             var endY = startY + 115;
 
                             markCoordinates = {

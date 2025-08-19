@@ -183,13 +183,33 @@ class UsersController extends Controller
         $role = Users_permission::select('users_permissions.*', 'permissions.permission_name', 'positions.position_name')
             ->leftJoin('permissions', 'users_permissions.permission_id', '=', 'permissions.id')
             ->leftJoin('positions', 'users_permissions.position_id', '=', 'positions.id')->where('users_id', $id)->get();
-        $data['data'] = $role;
+        
         foreach ($role as $key => $value) {
-            $value->action = '<a href="' . url('/users/form_permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-edit"></i></a>
-            <a href="' . url('/users/delete/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-trash-o"></i></a>';
+            $value->can_status_input = '<input type="text" name="can_status[' . $value->id . ']" value="' . $value->can_status . '" class="form-control form-control-sm" />';
+            $value->action = '<a href="' . url('/users/form_permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-edit"></i></a>'
+                .'<a href="' . url('/users/delete/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-trash-o"></i></a>';
         }
-        $data['data'] = $role;
-        return response()->json($data);
+        return response()->json(['data' => $role]);
+    }
+
+    public function updateCanStatus(Request $request)
+    {
+        if ($this->permission_id != 9) {
+            return redirect('/users/edit/' . auth()->user()->id);
+        }
+
+        $statuses = $request->input('can_status', []);
+        foreach ($statuses as $id => $status) {
+            $record = Users_permission::find($id);
+            if ($record) {
+                $record->can_status = $status;
+                $record->updated_by = auth()->user()->id;
+                $record->updated_at = date('Y-m-d H:i:s');
+                $record->save();
+            }
+        }
+
+        return redirect()->route('users.permission', ['id' => $request->input('user_id')])->with('success', 'แก้ไขข้อมูลสำเร็จ');
     }
 
     public function create_permission($id)

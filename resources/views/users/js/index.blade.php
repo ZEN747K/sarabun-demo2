@@ -27,11 +27,11 @@
                 data: 'fullname',
             },
             {
-                data: 'permission_name',
+                data: 'position_name',
                 class: 'text-center',
             },
             {
-                data: 'position_name',
+                data: 'permission_name',
                 class: 'text-center',
             },
             {
