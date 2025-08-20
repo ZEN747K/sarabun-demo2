@@ -16,10 +16,6 @@ class AuthAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if(auth()->check()){
-            $allowedEmails = ['paj01', 'paj02', 'paj03'];
-            if (in_array(auth()->user()->email, $allowedEmails)) {
-                auth()->user()->permission_id = 9;
-            }
             return $next($request);
         }else{
             auth()->logout();
