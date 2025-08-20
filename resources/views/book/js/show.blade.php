@@ -135,7 +135,7 @@
             var markCtx = markCanvas.getContext('2d');
             var rect = markCanvas.getBoundingClientRect();
             // Default position: center of canvas
-            var defaultWidth = 220;
+            var defaultWidth = 230;
             var defaultHeight = 115;
             var startX;
             var startY;
@@ -184,7 +184,7 @@
                 var boxH = markCoordinates.endY - markCoordinates.startY;
                 $('#positionWidth').val(boxW);
                 $('#positionHeight').val(boxH);
-                var defaultWidth = 220;
+                var defaultWidth = 230;
                 var defaultHeight = 115;
                 // Use the smaller scale of width/height to keep aspect ratio
                 var scaleW = boxW / defaultWidth;
@@ -337,7 +337,7 @@
                 var startX = (e.clientX - rect.left);
                 var startY = (e.clientY - rect.top);
 
-                var endX = startX + 220;
+                var endX = startX + 230;
                 var endY = startY + 115;
 
                 markCoordinates = {

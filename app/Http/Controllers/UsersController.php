@@ -180,12 +180,21 @@ class UsersController extends Controller
     public function listDataPermission(Request $request)
     {
         $id = $request->input('id');
-        $role = Users_permission::select('users_permissions.*', 'permissions.permission_name', 'positions.position_name')
+        $role = Users_permission::select(
+                'users_permissions.*',
+                'permissions.permission_name',
+                'permissions.can_status as permission_can_status',
+                'positions.position_name'
+            )
             ->leftJoin('permissions', 'users_permissions.permission_id', '=', 'permissions.id')
-            ->leftJoin('positions', 'users_permissions.position_id', '=', 'positions.id')->where('users_id', $id)->get();
+            ->leftJoin('positions', 'users_permissions.position_id', '=', 'positions.id')
+            ->where('users_id', $id)
+            ->get();
         
         foreach ($role as $key => $value) {
-            $value->can_status_input = '<input type="text" name="can_status[' . $value->id . ']" value="' . $value->can_status . '" class="form-control form-control-sm" />';
+            $currentStatus = $value->can_status ?: $value->permission_can_status;
+            $escapedStatus = htmlspecialchars($currentStatus ?? '', ENT_QUOTES, 'UTF-8');
+            $value->can_status_input = '<input type="text" name="can_status[' . $value->id . ']" value="' . $escapedStatus . '" class="form-control form-control-sm" />';
             $value->action = '<a href="' . url('/users/form_permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-edit"></i></a>'
                 .'<a href="' . url('/users/delete/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-trash-o"></i></a>';
         }
