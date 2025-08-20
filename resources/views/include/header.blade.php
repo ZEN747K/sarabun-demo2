@@ -3,12 +3,7 @@
     <div class="header-wrapper d-flex justify-content-between align-items-center">
         <div class="me-auto pc-mob-drp">
             <ul class="list-unstyled d-flex align-items-center mb-0">
-                @php
-                    $adminEmails = ['paj01', 'paj02', 'paj03'];
-                @endphp
-                @if(in_array(auth()->user()->email, $adminEmails))
-                <a href="{{url('/users/add')}}" type="button" class="btn btn-danger" style="margin-right:10px">Admin</a>
-                @endif
+                
                 @if(auth()->user()->permission_id == 1 || auth()->user()->permission_id == 9)
                 <a href="{{url('book')}}" type="button" class="btn btn-outline-primary {{($function_key == 'index') ? 'active' : ''}}" style="margin-right:10px">นำเข้าหนังสือ</a>
                 @endif

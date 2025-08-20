@@ -21,14 +21,7 @@
                         {{ __('รายการหนังสือ') }}
                     </x-nav-link>
                 </div>
-                @php
-                    $adminEmails = ['paj01', 'paj02', 'paj03'];
-                @endphp
-                @if(in_array(Auth::user()->email, $adminEmails))
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <a href="{{ url('users/listUsers') }}" class="text-red-600 font-bold">Admin</a>
-                </div>
-                @endif
+                
             </div>
 
             <!-- Settings Dropdown -->

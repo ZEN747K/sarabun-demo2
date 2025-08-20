@@ -181,20 +181,20 @@ class UsersController extends Controller
     {
         $id = $request->input('id');
         $role = Users_permission::select(
-                'users_permissions.*',
+                'users_permissions.id',
+                'users_permissions.permission_id',
                 'permissions.permission_name',
-                'permissions.can_status as permission_can_status',
+                'permissions.can_status',
                 'positions.position_name'
             )
             ->leftJoin('permissions', 'users_permissions.permission_id', '=', 'permissions.id')
             ->leftJoin('positions', 'users_permissions.position_id', '=', 'positions.id')
-            ->where('users_id', $id)
+            ->where('users_permissions.users_id', $id)
             ->get();
         
         foreach ($role as $key => $value) {
-            $currentStatus = $value->can_status ?: $value->permission_can_status;
-            $escapedStatus = htmlspecialchars($currentStatus ?? '', ENT_QUOTES, 'UTF-8');
-            $value->can_status_input = '<input type="text" name="can_status[' . $value->id . ']" value="' . $escapedStatus . '" class="form-control form-control-sm" />';
+            $escapedStatus = htmlspecialchars($value->can_status ?? '', ENT_QUOTES, 'UTF-8');
+            $value->can_status_input = '<input type="text" name="can_status[' . $value->permission_id . ']" value="' . $escapedStatus . '" class="form-control form-control-sm" />';
             $value->action = '<a href="' . url('/users/form_permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-edit"></i></a>'
                 .'<a href="' . url('/users/delete/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-trash-o"></i></a>';
         }
@@ -208,13 +208,13 @@ class UsersController extends Controller
         }
 
         $statuses = $request->input('can_status', []);
-        foreach ($statuses as $id => $status) {
-            $record = Users_permission::find($id);
-            if ($record) {
-                $record->can_status = $status;
-                $record->updated_by = auth()->user()->id;
-                $record->updated_at = date('Y-m-d H:i:s');
-                $record->save();
+        foreach ($statuses as $permissionId => $status) {
+            $permission = Permission::find($permissionId);
+            if ($permission) {
+                $permission->can_status = $status;
+                $permission->updated_by = auth()->user()->id;
+                $permission->updated_at = date('Y-m-d H:i:s');
+                $permission->save();
             }
         }
 
