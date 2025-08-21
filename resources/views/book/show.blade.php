@@ -1,14 +1,9 @@
-{{-- resources/views/show.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'รายละเอียดหนังสือ')
 
 @section('content')
 @php
-    /**
-     * ตัวช่วยดึงสิทธิ์จาก permission.can_status ซึ่งเก็บเป็นสตริงคั่นด้วย comma
-     * รูปแบบตัวอย่าง: "3,3.5,4,5"
-     */
     $permissionObj = $permission ?? ($currentPermission ?? null) ?? null;
 
     $rawCanStatus = '';
@@ -20,20 +15,16 @@
         $rawCanStatus = (string) $authUser->permission->can_status;
     }
 
-    // แปลงเป็นอาร์เรย์ของสตริง เช่น ['3','3.5','4','5']
     $canStatus = array_filter(array_map(static function ($v) {
         return trim((string)$v);
     }, explode(',', $rawCanStatus)));
 
-    // ฟังก์ชันเช็คสิทธิ์แบบสั้น
     $can = static function (string $code) use ($canStatus): bool {
         return in_array($code, $canStatus, true);
     };
 
-    // เตรียมข้อมูลหนังสือ
-    /** @var \App\Models\Book|array|null $book */
-    // รองรับทั้ง object และ array
-    $b = $book ?? null;
+    $b = $book instanceof \Illuminate\Support\Collection ? $book->first() : $book;
+    
     $get = static function($key, $default = '') use ($b) {
         if (is_object($b)) {
             return $b->{$key} ?? $default;
@@ -60,9 +51,8 @@
     $statusCurrent     = $get('status', null);
     $mainFilePath      = $get('path', null);
     $mainFileName      = $get('file', null);
-    $attachments       = $get('fileAttachments', null);   // ถ้ามีแนบไฟล์หลายรายการ เก็บเป็นสตริง/JSON แล้วแต่ระบบ
+    $attachments       = $get('fileAttachments', null);
 
-    // ฟอร์แมตวันที่แบบย่อ
     $fmtDate = static function ($dt) {
         if (empty($dt)) return '-';
         try {
@@ -72,12 +62,10 @@
         }
     };
 
-    // ปลายทาง submit action (คุณสามารถเปลี่ยนเป็น route() ของคุณได้)
     $statusActionUrl = url('/books/' . $bookId . '/status');
 @endphp
 
 <div class="container py-3">
-    {{-- Header --}}
     <div class="card shadow-sm mb-3">
         <div class="card-body d-flex justify-content-between align-items-center">
             <div>
@@ -95,7 +83,6 @@
         </div>
     </div>
 
-    {{-- Subject / Meta --}}
     <div class="card shadow-sm mb-3">
         <div class="card-body">
             <div class="mb-2"><strong>เรื่อง:</strong> {{ $subject }}</div>
@@ -116,10 +103,8 @@
         </div>
     </div>
 
-    {{-- Attachments --}}
     @if(!empty($attachments))
         @php
-            // รองรับทั้ง JSON array หรือสตริงเส้นทางเดี่ยว
             $attList = [];
             if (is_string($attachments)) {
                 $maybeJson = json_decode($attachments, true);
@@ -149,13 +134,11 @@
         @endif
     @endif
 
-    {{-- Action Bar (แสดงตามสิทธิ์ can_status) --}}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h6 class="mb-3">การดำเนินการ</h6>
 
             <div class="d-flex flex-wrap gap-2">
-                {{-- แทงเรื่อง (3) --}}
                 @if($can('3'))
                     <form action="{{ $statusActionUrl }}" method="POST" class="m-0">
                         @csrf
@@ -166,7 +149,6 @@
                     </form>
                 @endif
 
-                {{-- แทงเรื่องแบบ 3.5 --}}
                 @if($can('3.5'))
                     <form action="{{ $statusActionUrl }}" method="POST" class="m-0">
                         @csrf
@@ -177,7 +159,6 @@
                     </form>
                 @endif
 
-                {{-- ประทับตราลงรับ (4) --}}
                 @if($can('4'))
                     <form action="{{ $statusActionUrl }}" method="POST" class="m-0">
                         @csrf
@@ -188,7 +169,6 @@
                     </form>
                 @endif
 
-                {{-- เกษียณ (5) --}}
                 @if($can('5'))
                     <form action="{{ $statusActionUrl }}" method="POST" class="m-0">
                         @csrf
@@ -197,9 +177,8 @@
                             เกษียณ
                         </button>
                     </form>
-                @endif>
+                @endif
 
-                {{-- เกษียณพับครึ่ง (14) --}}
                 @if($can('14'))
                     <form action="{{ $statusActionUrl }}" method="POST" class="m-0">
                         @csrf
@@ -211,14 +190,12 @@
                 @endif
             </div>
 
-            {{-- คำอธิบายสิทธิ์ (สำหรับ debug) --}}
             <div class="mt-3 small text-muted">
                 สิทธิ์ของคุณ: {{ $rawCanStatus !== '' ? $rawCanStatus : '-' }}
             </div>
         </div>
     </div>
 
-    {{-- ประวัติการดำเนินการ (ตัวอย่าง แสดง log ถ้าถูกส่งจาก Controller) --}}
     @if(!empty($logs) && is_iterable($logs))
         <div class="card shadow-sm">
             <div class="card-body">
@@ -260,7 +237,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{-- หมายเหตุ: log แนะนำให้มาจาก log_active_books / log_status_books --}}
             </div>
         </div>
     @endif
