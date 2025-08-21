@@ -1941,7 +1941,7 @@
                 text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
                 icon: "warning",
                 input: 'textarea',
-                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ11',
+                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ',
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",
