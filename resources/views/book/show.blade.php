@@ -104,40 +104,44 @@
         </div>
     </div>
     <div class="col-4">
-        <div id="box-card-item" style="height: 808px;overflow: auto;">
-           @foreach ($book as $rec)
-    <?php
-    $color = 'info';
-    if (!empty($rec) && isset($rec->type) && $rec->type != 1) {
-        $color = 'warning';
-    }
-    if (!empty($rec) && !empty($rec->file)) {
-        $action = "openPdf('" . $rec->url . "','" . $rec->id . "','" . $rec->status . "','" . $rec->type . "','" . $rec->is_number_stamp . "','" . $rec->inputBookregistNumber . "','" . $rec->position_id . "')";
-    } else {
-        $action = "uploadPdf('" . ($rec->id ?? '') . "')";
-    }
-    $text = '';
-    if (!empty($rec) && isset($rec->status) && $rec->status == 14) {
-        $text = '';
-        $color = 'success';
-    }
-    ?>
-    @if (!empty($rec))
-    <a href="javascript:void(0)" onclick="{{ $action }}">
-        <div class="card border-{{ $color }} mb-2">
-            <div class="card-header text-dark fw-bold">{{ $rec->inputSubject ?? '' }} {{ $text }}</div>
-            <div class="card-body text-dark">
-                <div class="row">
-                    <div class="col-9">{{ $rec->selectBookFrom ?? '' }}</div>
-                    <div class="col-3 fw-bold">{{ $rec->showTime ?? '' }} น.</div>
+       <div id="box-card-item" style="height: 808px;overflow: auto;">
+    @forelse ($book as $rec)
+        @php
+            $color = 'info';
+            if (optional($rec)->type != 1) {
+                $color = 'warning';
+            }
+            if (optional($rec)->status == 14) {
+                $color = 'success';
+            }
+
+            if (optional($rec)->file) {
+                $action = "openPdf('".($rec->url ?? '')."','".($rec->id ?? '')."','".($rec->status ?? '')."','".($rec->type ?? '')."','".($rec->is_number_stamp ?? '')."','".($rec->inputBookregistNumber ?? '')."','".($rec->position_id ?? '')."')";
+            } else {
+                $action = "uploadPdf('".($rec->id ?? '')."')";
+            }
+        @endphp
+
+        <a href="javascript:void(0)" onclick="{{ $action }}">
+            <div class="card border-{{ $color }} mb-2">
+                <div class="card-header text-dark fw-bold">
+                    {{ $rec->inputSubject ?? 'ไม่มีหัวข้อ' }}
+                </div>
+                <div class="card-body text-dark">
+                    <div class="row">
+                        <div class="col-9">{{ $rec->selectBookFrom ?? '-' }}</div>
+                        <div class="col-3 fw-bold">{{ $rec->showTime ?? '' }} น.</div>
+                    </div>
                 </div>
             </div>
+        </a>
+    @empty
+        <div class="alert alert-secondary text-center mt-3">
+            ไม่มีข้อมูลหนังสือ
         </div>
-    </a>
-    @endif
-@endforeach
-T
-        </div>
+    @endforelse
+</div>
+
         <div class="d-flex justify-content-end mt-2">
             <button class="btn btn-outline-dark btn-sm" style="margin-right: 5px;font-size: 5px;" id="prevPage"><i class="fa fa-arrow-circle-left"></i></button>
             <select id="page-select-card" class="border-dark">
