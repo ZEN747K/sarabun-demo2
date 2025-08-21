@@ -1,308 +1,681 @@
+{{-- resources/views/show.blade.php --}}
 @extends('include.main')
 
 @section('style')
 <style>
     body {
         font-family: 'Noto Sans Thai';
-        height: 1000px;
+        background-color: #f8f9fa;
+        margin: 0;
+        padding: 0;
     }
-    h3 { font-weight: normal; font-size: 18px; margin-bottom: 10px; }
-    .hidden { display: none; }
-    span.req { color: red; }
-    #upload-area {
-        border: 2px dashed #ccc; padding: 10px; text-align: center; background-color: #fff;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-        display: flex; justify-content: center; align-items: center; flex-direction: column;
+
+    .container-fluid {
+        padding: 20px;
     }
-    #upload-area.dragover { border-color: #007bff; background-color: #f8f9fa; }
-    .upload-icon { width: 80px; height: auto; margin-bottom: 20px; }
-    #pdf-container { background-color: #fff; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); margin: 0px auto; overflow-y: auto; width: 100%; }
-    #pdf-container canvas { margin-bottom: 20px; border: 1px solid #ccc; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        margin-bottom: 20px;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        font-weight: 600;
+        padding: 15px;
+        border-bottom: none;
+    }
+
+    .card-header h4 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-header i {
+        font-size: 24px;
+    }
+
+    .meta-info {
+        background: #e9ecef;
+        padding: 10px 15px;
+        border-radius: 0 0 8px 8px;
+        font-size: 14px;
+        color: #6c757d;
+    }
+
+    .status-badge {
+        background: #28a745;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+
+    .speed-badge {
+        background: #ffc107;
+        color: #212529;
+        padding: 4px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 5px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .btn-action {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: 1px solid;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-action i {
+        font-size: 16px;
+    }
+
+    .btn-primary-action {
+        background: #007bff;
+        border-color: #007bff;
+        color: white;
+    }
+
+    .btn-success-action {
+        background: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+
+    .btn-warning-action {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+
+    .btn-secondary-action {
+        background: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+
+    .btn-danger-action {
+        background: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .detail-item {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 12px;
+    }
+
+    .detail-label {
+        font-size: 12px;
+        color: #6c757d;
+        margin-bottom: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        color: #212529;
+        font-weight: 500;
+    }
+
+    .file-viewer {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        height: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .file-viewer iframe,
+    .file-viewer embed {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 15px;
+        color: #dee2e6;
+    }
+
+    .timeline {
+        position: relative;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 11px;
+        top: 30px;
+        width: 2px;
+        height: calc(100% + 10px);
+        background: #dee2e6;
+    }
+
+    .timeline-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 3px solid #fff;
+        box-shadow: 0 0 0 3px #007bff25;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+
+    .timeline-content {
+        flex: 1;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #212529;
+    }
+
+    .timeline-meta {
+        font-size: 12px;
+        color: #6c757d;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .permission-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+    }
+
+    .permission-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .permission-item:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .permission-label {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .permission-value {
+        color: #212529;
+    }
+
+    .attachment-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .attachment-chip {
+        background: #e9ecef;
+        color: #495057;
+        padding: 6px 12px;
+        border-radius: 15px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .attachment-chip:hover {
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+    }
+
+    .no-permissions {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        text-align: center;
+    }
+
+    .no-permissions .alert-title {
+        font-weight: 600;
+        color: #856404;
+        margin-bottom: 8px;
+    }
+
+    .no-permissions .alert-text {
+        color: #856404;
+        font-size: 14px;
+    }
+
+    .code-snippet {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            justify-content: center;
+        }
+        
+        .timeline-meta {
+            flex-direction: column;
+            gap: 5px;
+        }
+    }
 </style>
 @endsection
 
 @section('content')
-@php
-    // ใช้เรคคอร์ดตัวแรกของรายการทางซ้ายเป็น "หนังสือที่กำลังเปิด"
-    $current = ($book instanceof \Illuminate\Support\Collection || $book instanceof \Illuminate\Database\Eloquent\Collection) ? $book->first() : $book;
-
-    // ดึง can_status จาก $permission_data (controller ส่งมาแล้ว) หรือจากผู้ใช้
-    $user = auth()->user();
-    $canStatusStr = $permission_data->can_status ?? ($user?->permission?->can_status ?? '');
-    $can = collect(preg_split('/\s*,\s*/', (string)$canStatusStr, -1, PREG_SPLIT_NO_EMPTY))
-            ->map(fn($v)=>(string)$v)->values()->all();
-    $canDo = fn($code) => in_array((string)$code, $can, true);
-@endphp
-
-<div class="row">
-    <div class="col-12">
-        <div class="row">
-            {{-- ==== คอลัมน์ซ้าย: ค้นหา + ปุ่มเครื่องมือ (ตามสิทธิ์) ==== --}}
-            <div class="col-4">
-                <div class="input-group mb-3">
-                    <input type="text" id="inputSearch" class="form-control border-dark" placeholder="ค้นหา">
-                    <button class="btn btn-outline-dark" type="button" id="search_btn">Button</button>
+<div class="container-fluid">
+    {{-- Header Section --}}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4>
+                        <i class="fa fa-book"></i>
+                        {{ $book->inputSubject ?? 'รายละเอียดหนังสือ' }}
+                    </h4>
+                </div>
+                <div class="meta-info">
+                    เลขทะเบียน: <strong>{{ $book->inputBookregistNumber ?? '-' }}</strong>
+                    @if(!empty($book->inputBooknumberOrgStruc))
+                        • เลขที่ส่วน: <strong>{{ $book->inputBooknumberOrgStruc }}</strong>
+                    @endif
+                    @if(!empty($book->inputDated))
+                        • ลงวันที่: <strong>{{ \Carbon\Carbon::parse($book->inputDated)->format('d/m/Y') }}</strong>
+                    @endif
+                    
+                    <span class="status-badge">{{ $book->status ?? '-' }}</span>
+                    @if(!empty($book->selectLevelSpeed))
+                        <span class="speed-badge">{{ $book->selectLevelSpeed }}</span>
+                    @endif
                 </div>
             </div>
-            <div class="col-8">
-                <div class="row">
-                    <div class="col-6 d-flex align-items-center">
-                        <label style="color:red" id="txt_label"></label>
-                    </div>
-                    <div class="col-6 d-flex justify-content-end mb-3">
+        </div>
+    </div>
 
-                        {{-- เกษียณพับครึ่ง (status 14) --}}
-                        @if($canDo('14'))
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="insert-pages" title="เกษียณพับครึ่ง">
-                                <i class="fa fa-sticky-note-o"></i>
-                            </button>
-                        @endif
+    <div class="row">
+        {{-- Left Column: Actions + Details + File Viewer --}}
+        <div class="col-lg-8 col-md-12">
+            {{-- Actions Card --}}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-cogs"></i> การดำเนินการ</h5>
+                </div>
+                <div class="card-body">
+                    @php
+                        // ดึง can_status จาก $permission หรือจากผู้ใช้ปัจจุบัน
+                        $user = auth()->user() ?? null;
+                        $canStatusStr = $permission->can_status ?? ($user?->permission->can_status ?? '');
+                        
+                        // แปลงเป็นอาเรย์ และตัดช่องว่าง
+                        $can = collect(preg_split('/\s*,\s*/', (string)$canStatusStr, -1, PREG_SPLIT_NO_EMPTY))
+                            ->map(fn($v)=>(string)$v)->values()->all();
+                        
+                        // helper สำหรับเช็คสิทธิ์
+                        $canDo = fn($code) => in_array((string)$code, $can, true);
+                        
+                        // route เป้าหมาย
+                        $statusRoute = function($bookId){
+                            return url('/books/'.$bookId.'/status');
+                        };
+                    @endphp
 
-                        {{-- ตราประทับ / แก้ตราประทับ / ประทับเลขรับ (status 4) --}}
-                        @if($canDo('4'))
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="add-stamp" title="ตราประทับ">ตราประทับ</button>
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="edit-stamp" title="แก้ไขตราประทับ">แก้ไขตราประทับ</button>
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="number-stamp" title="ประทับเลขที่รับ">ประทับเลขที่รับ</button>
-                        @endif
-
-                        {{-- ปุ่มบันทึกที่เกี่ยวข้อง (ให้คงพฤติกรรมเดิม: disabled ตั้งต้น) --}}
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="number-save" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="save-stamp" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="save-stamp-2" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="save-pdf" title="บันทึก" disabled><i class="fa fa-floppy-o"></i></button>
-
-                        {{-- แทงเรื่อง (status 3, 3.5) --}}
+                    <div class="action-buttons">
+                        {{-- แทงเรื่อง (3 / 3.5) --}}
                         @if($canDo('3') || $canDo('3.5'))
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="send-to" title="แทงเรื่อง">
-                                <i class="fa fa-send-o"></i>
-                            </button>
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="sendTo" title="แทงเรื่อง">
-                                <i class="fa fa-send-o"></i>
+                            <button class="btn btn-action btn-primary-action" data-action="status" data-status="3">
+                                <i class="fa fa-send"></i> แทงเรื่อง
                             </button>
                         @endif
 
-                        {{-- เกษียณ (status 5) — เปิด offcanvas --}}
+                        {{-- ประทับตราลงรับ (4) --}}
+                        @if($canDo('4'))
+                            <button class="btn btn-action btn-success-action" data-action="status" data-status="4">
+                                <i class="fa fa-stamp"></i> ประทับตราลงรับ
+                            </button>
+                        @endif
+
+                        {{-- เกษียณ (5) --}}
                         @if($canDo('5'))
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;"
-                                    type="button" data-bs-toggle="offcanvas" id="send-signature" title="เกษียณหนังสือ"
-                                    data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
-                                <i class="fa fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;"
-                                    type="button" data-bs-toggle="offcanvas" id="manager-sinature" title="เกษียณหนังสือ"
-                                    data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
-                                <i class="fa fa-edit"></i>
+                            <button class="btn btn-action btn-warning-action" data-action="status" data-status="5">
+                                <i class="fa fa-archive"></i> เกษียณ
                             </button>
                         @endif
 
-                        {{-- ปุ่มบันทึกหลังเกษียณ/ผู้จัดการ (ติด disabled ไว้ให้ JS ปลด) --}}
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="signature-save" title="บันทึกข้อมูล" disabled><i class="fa fa-floppy-o"></i></button>
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="manager-save" title="บันทึกข้อมูล" disabled><i class="fa fa-floppy-o"></i></button>
+                        {{-- เกษียณพับครึ่ง (14) --}}
+                        @if($canDo('14'))
+                            <button class="btn btn-action btn-secondary-action" data-action="status" data-status="14">
+                                <i class="fa fa-sticky-note"></i> เกษียณพับครึ่ง
+                            </button>
+                        @endif
 
-                        {{-- แทงเรื่อง (ผู้จัดการ) --}}
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="manager-send" title="แทงเรื่อง"><i class="fa fa-send-o"></i></button>
-
-                        {{-- บันทึกส่ง/จัดเก็บ --}}
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="send-save" title="บันทึกข้อมูล" disabled><i class="fa fa-floppy-o"></i></button>
-                        <button class="btn btn-outline-dark btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="directory-save" title="จัดเก็บไฟล์" disabled><i class="fa fa-folder-o"></i></button>
-
-                        {{-- นำทางหน้า PDF --}}
-                        <button class="btn btn-outline-dark btn-sm" style="margin-right: 5px;font-size: 5px;" id="prev"><i class="fa fa-arrow-circle-left"></i></button>
-
-                        {{-- ปฏิเสธ (ให้แสดงตาม flow เดิมของคุณ; ถ้าต้องจำกัดสิทธิ์เพิ่ม ค่อยบอกผม) --}}
-                        <button class="btn btn-outline-danger btn-sm btn-default" style="margin-right: 5px;font-size: 15px;" id="reject-book" title="ปฏิเสธ">ปฏิเสธ</button>
-
-                        <select id="page-select" class="border-dark"></select>
-                        <button class="btn btn-outline-dark btn-sm" style="margin-left: 5px;font-size: 5px;" id="next"><i class="fa fa-arrow-circle-right"></i></button>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ==== คอลัมน์ขวา: Header สรุปหนังสือ + PDF Viewer ==== --}}
-            <div class="col-8">
-                {{-- Header สรุปหนังสือ --}}
-                <div class="card mb-2">
-                    <div class="card-body text-dark">
-                        @if($current)
-                            <div class="fw-bold" style="font-size: 18px;">
-                                {{ $current->inputSubject ?? 'รายละเอียดหนังสือ' }}
-                            </div>
-                            <div class="text-muted">
-                                เลขทะเบียน: {{ $current->inputBookregistNumber ?? '-' }}
-                                @if(!empty($current->inputBooknumberOrgStruc)) • เลขที่ส่วน: {{ $current->inputBooknumberOrgStruc }} @endif
-                                @if(!empty($current->inputDated)) • ลงวันที่: {{ \Carbon\Carbon::parse($current->inputDated)->format('d/m/Y') }} @endif
-                                @if(!empty($current->selectLevelSpeed)) • ชั้นความเร็ว: {{ $current->selectLevelSpeed }} @endif
-                                @if(!empty($current->status)) • สถานะ: {{ $current->status }} @endif
-                            </div>
-                        @else
-                            <div class="text-danger">ไม่พบข้อมูลหนังสือ</div>
+                        {{-- ตีกลับ (10) --}}
+                        @if($canDo('10'))
+                            <button class="btn btn-action btn-danger-action" data-action="status" data-status="10">
+                                <i class="fa fa-undo"></i> ตีกลับ
+                            </button>
                         @endif
                     </div>
-                </div>
 
-                {{-- PDF Tabs --}}
-                <ul class="nav nav-tabs" id="myTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active text-black" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">หนังสือ</button>
-                    </li>
-                    <li class="nav-item {{ $canDo('14') ? '' : 'hidden' }}" id="insert_tab" role="presentation">
-                        <button class="nav-link text-black" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="false">เกษียณพับครึ่ง</button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="myTabContent">
-                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
-                        <div style="height: 703px; overflow-y: auto; border: 1px solid; display: grid; place-items: center; position: relative;" id="div-canvas">
-                            <div style="position: relative;">
-                                <canvas id="pdf-render"></canvas>
-                                <canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas>
+                    @if(empty($can))
+                        <div class="no-permissions">
+                            <div class="alert-title">ยังไม่ได้กำหนดสิทธิ์ (can_status) ให้ผู้ใช้นี้</div>
+                            <div class="alert-text">
+                                กรุณาตรวจสอบตาราง <span class="code-snippet">permissions.can_status</span> หรือข้อมูลในผู้ใช้
                             </div>
                         </div>
-                    </div>
-                    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
-                        <div style="height: 703px; overflow-y: auto; border: 1px solid; display: grid; place-items: center; position: relative;" id="div-canvas-insert">
-                            <div style="position: relative;">
-                                <canvas id="pdf-render-insert"></canvas>
-                                <canvas id="mark-layer-insert" style="position: absolute; left: 0; top: 0;" height="1263" width="893"></canvas>
-                            </div>
-                        </div>
-                    </div>
+                    @endif
                 </div>
-
-            </div>{{-- /col-8 --}}
-        </div>{{-- /row --}}
-    </div>{{-- /col-12 --}}
-
-    {{-- ==== ลิสต์ซ้าย: การ์ดหนังสือ ==== --}}
-    <div class="col-4">
-        <div id="box-card-item" style="height: 808px;overflow: auto;">
-            @foreach ($book as $rec)
-                @php
-                    $color = $rec->type != 1 ? 'warning' : 'info';
-                    $text = $rec->status == 14 ? '' : '';
-                    if ($rec->file) {
-                        $action = "openPdf('{$rec->url}','{$rec->id}','{$rec->status}','{$rec->type}','{$rec->is_number_stamp}','{$rec->inputBookregistNumber}','{$rec->position_id}')";
-                    } else {
-                        $action = "uploadPdf('{$rec->id}')";
-                    }
-                @endphp
-                <a href="javascript:void(0)" onclick="{{ $action }}">
-                    <div class="card border-{{$color}} mb-2">
-                        <div class="card-header text-dark fw-bold">{{ $rec->inputSubject }} {{ $text }}</div>
-                        <div class="card-body text-dark">
-                            <div class="row">
-                                <div class="col-9">{{ $rec->selectBookFrom }}</div>
-                                <div class="col-3 fw-bold">{{ $rec->showTime }} น.</div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            @endforeach
-        </div>
-        <div class="d-flex justify-content-end mt-2">
-            <button class="btn btn-outline-dark btn-sm" style="margin-right: 5px;font-size: 5px;" id="prevPage"><i class="fa fa-arrow-circle-left"></i></button>
-            <select id="page-select-card" class="border-dark">
-                @for($page = 1; $page <= $totalPages; $page++)
-                    <option value="{{$page}}">{{$page}}</option>
-                @endfor
-            </select>
-            <button class="btn btn-outline-dark btn-sm" style="margin-left: 5px;font-size: 5px;" id="nextPage"><i class="fa fa-arrow-circle-right"></i></button>
-        </div>
-    </div>
-
-    {{-- ==== อัปโหลดไฟล์ (กรณียังไม่มี) ==== --}}
-    <div class="col-8 hidden" id="div-uploadPdf">
-        <div class="col-12" id="uploadDiv">
-            <div style="height: 803px; overflow-y: auto;display: grid;position: relative;">
-                <div id="upload-area">
-                    <div class="upload-container">
-                        <img src="{{url('/template/icon/upload.png')}}" alt="Cloud Upload Icon" class="upload-icon">
-                        <input type="file" id="file-input" name="file-input" style="opacity: 0; position: absolute;" accept="application/pdf">
-                        <p>DRAG & DROP FILE HERE OR</p>
-                        <button type="button" id="browse-btn" class="btn btn-outline-info">Browse files</button>
-                    </div>
-                </div>
-                <div id="pdf-container" class="hidden" style="overflow-y: scroll;"></div>
             </div>
-        </div>
-    </div>
 
-    {{-- Hidden fields --}}
-    <input type="hidden" name="id" id="id">
-    <input type="hidden" name="position_id" id="position_id">
-    <input type="hidden" name="number_id" id="number_id">
-    <input type="hidden" name="users_id" id="users_id">
-    <input type="hidden" name="positionX" id="positionX">
-    <input type="hidden" name="positionY" id="positionY">
-    <input type="hidden" name="positionPages" id="positionPages">
-    <input type="hidden" name="positionWidth" id="positionWidth">
-    <input type="hidden" name="positionHeight" id="positionHeight">
-    <input type="hidden" name="edit-date-hidden" id="edit-date-hidden">
-    <input type="hidden" name="edit-time-hidden" id="edit-time-hidden">
-    <input type="hidden" id="oldPositionX">
-    <input type="hidden" id="oldPositionY">
-    <input type="hidden" id="oldPositionPages">
-    <input type="hidden" id="oldPositionWidth">
-    <input type="hidden" id="oldPositionHeight">
-</div>
-
-{{-- Offcanvas: เซ็นเกษียณหนังสือ --}}
-<div class="offcanvas offcanvas-start" style="width:30%" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="offcanvasScrollingLabel"><u>เซ็นเกษียณหนังสือ</u></h5>
-        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-        <form id="modalForm">
-            <div class="col-12">
-                <div class="mb-3 row">
-                    <label class="col-sm-2 col-form-label"><span class="req">*</span>ข้อความเซ็นหนังสือ :</label>
-                    <div class="col-sm-10">
-                        <textarea rows="4" class="form-control" name="modal-text" id="modal-text"></textarea>
-                    </div>
+            {{-- Details Card --}}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-info-circle"></i> รายละเอียดหนังสือ</h5>
                 </div>
-                <div class="mb-3 row">
-                    <div class="col-2"></div>
-                    <div class="col-sm-10 d-flex justify-content-center text-center">
-                        ({{$users->fullname}})<br>
-                        {{$permission_data->permission_name}}<br>
-                        {{convertDateToThai(date("Y-m-d"))}}
-                    </div>
-                </div>
-                <div class="mb-3 row">
-                    <label class="col-sm-2 col-form-label"><span class="req">*</span>รหัสผ่านเกษียน :</label>
-                    <div class="col-sm-10">
-                        <input type="password" class="form-control" id="modal-Password" name="modal-Password">
-                    </div>
-                </div>
-                <div class="mb-3 row">
-                    <label class="col-sm-2 col-form-label"><span class="req">*</span>แสดงผล :</label>
-                    <div class="col-sm-10 d-flex align-items-center">
-                        <ul class="list-group list-group-horizontal 2">
-                            <li class="list-group-item"><input class="form-check-input me-1" type="checkbox" name="modal-check[]" value="1" checked>ชื่อ-นามสกุล</li>
-                            <li class="list-group-item"><input class="form-check-input me-1" type="checkbox" name="modal-check[]" value="2" checked>ตำแหน่ง</li>
-                            <li class="list-group-item"><input class="form-check-input me-1" type="checkbox" name="modal-check[]" value="3" checked>วันที่</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="mb-3 row">
-                    <label class="col-sm-2 col-form-label"></label>
-                    <div class="col-sm-10 d-flex align-items-center">
-                        <ul class="list-group list-group-horizontal">
-                            <li class="list-group-item"><input class="form-check-input me-1" type="checkbox" name="modal-check[]" value="4" checked>ลายเซ็น</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="row d-flex justify-content-end">
-                    <div class="col-2">
-                        <button type="submit" id="submit-modal" class="btn btn-primary">ตกลง</button>
+                <div class="card-body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">ประเภทหนังสือ</div>
+                            <div class="detail-value">{{ $book->type ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">ทะเบียนรับ</div>
+                            <div class="detail-value">{{ $book->selectBookregist ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">เลขทะเบียน</div>
+                            <div class="detail-value">{{ $book->inputBookregistNumber ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">เลขที่หน่วยงาน</div>
+                            <div class="detail-value">{{ $book->inputBooknumberOrgStruc ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">เรื่อง</div>
+                            <div class="detail-value">{{ $book->inputSubject ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">จาก</div>
+                            <div class="detail-value">{{ $book->selectBookFrom ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">ถึง</div>
+                            <div class="detail-value">{{ $book->inputBookto ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">อ้างถึง</div>
+                            <div class="detail-value">{{ $book->inputBookref ?? '-' }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">วันที่รับ</div>
+                            <div class="detail-value">
+                                {{ !empty($book->inputRecieveDate) ? \Carbon\Carbon::parse($book->inputRecieveDate)->format('d/m/Y H:i') : '-' }}
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">วันที่ลงรับ</div>
+                            <div class="detail-value">
+                                {{ !empty($book->adminDated) ? \Carbon\Carbon::parse($book->adminDated)->format('d/m/Y H:i') : '-' }}
+                            </div>
+                        </div>
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-label">บันทึก/หมายเหตุ</div>
+                            <div class="detail-value">{{ $book->inputNote ?? '-' }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </form>
+
+            {{-- File Viewer Card --}}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-file-pdf-o"></i> ไฟล์เอกสาร</h5>
+                </div>
+                <div class="card-body">
+                    @php
+                        $filePath = $book->file ?? null;
+                        $fullPath = $filePath ? (Str::startsWith($filePath, ['http://','https://']) ? $filePath : url($filePath)) : null;
+                    @endphp
+
+                    @if($fullPath)
+                        <div class="file-viewer">
+                            <embed src="{{ $fullPath }}" type="application/pdf" />
+                        </div>
+                    @else
+                        <div class="empty-state">
+                            <i class="fa fa-file-o"></i>
+                            <div>ยังไม่มีไฟล์แนบหลักของหนังสือ</div>
+                            <small class="text-muted">(field: file)</small>
+                        </div>
+                    @endif
+
+                    @if(!empty($book->fileAttachments))
+                        <div style="margin-top: 15px;">
+                            <h6><i class="fa fa-paperclip"></i> ไฟล์แนบเพิ่มเติม</h6>
+                            @php
+                                $attaches = is_string($book->fileAttachments) ? explode(',', $book->fileAttachments) : (is_array($book->fileAttachments) ? $book->fileAttachments : []);
+                            @endphp
+                            <div class="attachment-chips">
+                                @forelse($attaches as $f)
+                                    @php
+                                        $url = Str::startsWith($f, ['http://','https://']) ? $f : url(trim($f));
+                                    @endphp
+                                    <a class="attachment-chip" href="{{ $url }}" target="_blank" rel="noopener">
+                                        <i class="fa fa-download"></i> เปิดไฟล์แนบ
+                                    </a>
+                                @empty
+                                    <span class="text-muted">ไม่พบไฟล์แนบเพิ่มเติม</span>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- Right Column: Timeline + Permissions --}}
+        <div class="col-lg-4 col-md-12">
+            {{-- Timeline Card --}}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-clock-o"></i> ไทม์ไลน์การดำเนินการ</h5>
+                </div>
+                <div class="card-body">
+                    @php
+                        // คาดว่า controller จะส่ง $logs
+                        $logs = $logs ?? [];
+                    @endphp
+
+                    @if(!empty($logs) && count($logs) > 0)
+                        <div class="timeline">
+                            @foreach($logs as $log)
+                                <div class="timeline-item">
+                                    <div class="timeline-dot"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-title">
+                                            {{ $log->detail ?? $log->action ?? 'ดำเนินการ' }}
+                                            @if(!empty($log->status))
+                                                <span class="badge bg-primary">สถานะ: {{ $log->status }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="timeline-meta">
+                                            <span><i class="fa fa-calendar"></i> {{ !empty($log->datetime) ? \Carbon\Carbon::parse($log->datetime)->format('d/m/Y H:i') : '-' }}</span>
+                                            @if(!empty($log->position_name))
+                                                <span><i class="fa fa-user"></i> {{ $log->position_name }}</span>
+                                            @endif
+                                            @if(!empty($log->fullname))
+                                                <span><i class="fa fa-user-circle"></i> {{ $log->fullname }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="empty-state">
+                            <i class="fa fa-history"></i>
+                            <div>ยังไม่มีบันทึกการดำเนินการ</div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Permissions Card --}}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-users"></i> ข้อมูลสิทธิ์</h5>
+                </div>
+                <div class="card-body">
+                    <div class="permission-info">
+                        <div class="permission-item">
+                            <span class="permission-label">Permission Name</span>
+                            <span class="permission-value">{{ $permission->permission_name ?? ($user?->permission?->permission_name ?? '-') }}</span>
+                        </div>
+                        <div class="permission-item">
+                            <span class="permission-label">can_status</span>
+                            <span class="permission-value">{{ $permission->can_status ?? ($user?->permission?->can_status ?? '-') }}</span>
+                        </div>
+                        <div class="permission-item">
+                            <span class="permission-label">ตำแหน่ง (Position ID)</span>
+                            <span class="permission-value">{{ $permission->position_id ?? ($user?->position_id ?? '-') }}</span>
+                        </div>
+                        <div class="permission-item">
+                            <span class="permission-label">ผู้ใช้ปัจจุบัน</span>
+                            <span class="permission-value">{{ $user->fullname ?? $user->name ?? '-' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+(function(){
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const buttons = document.querySelectorAll('[data-action="status"]');
+    const bookId = @json($book->id ?? null);
+    const endpoint = @json($statusRoute($book->id ?? 0));
+
+    async function postStatus(newStatus){
+        if(!bookId){
+            alert('ไม่พบรหัสหนังสือ');
+            return;
+        }
+
+        try{
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type':'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if(!res.ok){
+                const t = await res.text();
+                throw new Error(t || 'HTTP '+res.status);
+            }
+
+            const data = await res.json().catch(()=> ({}));
+            
+            // แจ้งเตือนและรีเฟรช
+            alert(data?.message || 'อัปเดตสถานะสำเร็จ');
+            location.reload();
+        }catch(e){
+            console.error(e);
+            alert('ไม่สามารถอัปเดตสถานะได้: ' + (e?.message || 'unknown error'));
+        }
+    }
+
+    buttons.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+            const status = btn.getAttribute('data-status');
+            
+            // ยืนยันเป็นพิเศษสำหรับสถานะสำคัญ
+            if(status === '5' || status === '14'){
+                if(!confirm(status === '5' ? 'ยืนยันการ "เกษียณ" เอกสารนี้?' : 'ยืนยันการ "เกษียณพับครึ่ง" เอกสารนี้?')) return;
+            }
+            
+            postStatus(status);
+        })
+    });
+})();
+</script>
 @endsection
-
-{{-- สคริปต์/เลย์เอาท์เฉพาะบทบาท (มาจาก controller) --}}
-@extends($extends)
