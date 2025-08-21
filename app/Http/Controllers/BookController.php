@@ -769,13 +769,25 @@ class BookController extends Controller
     public function checkbox_send()
     {
         $txt = '<div class="row d-flex align-items-start">';
+          // หาตำแหน่งต้นสังกัดของผู้ใช้ปัจจุบัน
+        $parentPosition = Position::where('id', $this->position_id)->value('parent_id');
         $get_users = Users_permission::select('users.*', 'permissions.permission_name')
             ->join('users', 'users_permissions.users_id', '=', 'users.id')
             ->join('permissions', 'users_permissions.permission_id', '=', 'permissions.id')
-            ->where('users_permissions.position_id', $this->position_id)
-            ->where('users_permissions.permission_id', $this->permission_data->parent_id)
-            ->get();
-        $count = Users_permission::where('permission_id', $this->permission_data->parent_id)->where('position_id', $this->position_id)->count();
+            ->where('users_permissions.permission_id', $this->permission_data->parent_id);
+
+        // กรณีมีตำแหน่งต้นสังกัดให้ค้นหาภายใต้ตำแหน่งนั้น ไม่เช่นนั้นใช้ตำแหน่งเดิม
+        if (!empty($parentPosition)) {
+            $get_users = $get_users->where('users_permissions.position_id', $parentPosition);
+            $count = Users_permission::where('permission_id', $this->permission_data->parent_id)
+                ->where('position_id', $parentPosition)->count();
+        } else {
+            $get_users = $get_users->where('users_permissions.position_id', $this->position_id);
+            $count = Users_permission::where('permission_id', $this->permission_data->parent_id)
+                ->where('position_id', $this->position_id)->count();
+        }
+
+        $get_users = $get_users->get();
         if (!empty($get_users)) {
             for ($i = 0; $i < $count; $i++) {
                 $txt .= '<div class="col-1 mb-3"></div><div class="col-11 mb-2">';
