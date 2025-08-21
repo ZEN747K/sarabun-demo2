@@ -1310,15 +1310,16 @@
                 $('#save-stamp').show();
             }
             if (status == STATUS.WAITING_SIGNATURE) {
-                if (position_id != 1) {
-                    document.getElementById('send-signature').disabled = false;
-                    $('#send-signature').show();
-                    $('#signature-save').show();
-                    $('#insert-pages').show();
-                } else {
-                    $('#sendTo').show();
-                }
-            }
+    const perms = permission.split(',').map(p => p.trim());
+    if (perms.includes('3.5') || perms.includes('4') || perms.includes('5')) {
+        document.getElementById('send-signature').disabled = false;
+        $('#send-signature').show();
+        $('#signature-save').show();
+        $('#insert-pages').show();
+    } else {
+        $('#sendTo').show();
+    }
+}
             if (status == STATUS.SIGNED) {
                 const perms = permission.split(',').map(p => p.trim());
                 if (!perms.includes('3.5') && !perms.includes('4') && !perms.includes('5')) {
