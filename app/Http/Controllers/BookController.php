@@ -202,9 +202,6 @@ class BookController extends Controller
             $rec->url = url("storage/" . $rec->file);
             $rec->inputBookregistNumber = numberToThaiDigits($rec->inputBookregistNumber);
         }
-        $data['books'] = $book;
-        $data['book']  = $book->first() ?? null;
-
         $book_count = new Book;
         if ($this->permission_id == '1' || $this->permission_id == '2') {
             $book_count = $book_count->select('books.*')->whereIn('status', $this->permission)->orderBy('created_at', 'desc')->count();
@@ -218,13 +215,9 @@ class BookController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->count();
         }
-
         $book_count = $book_count;
         $data['totalPages'] = (int)ceil($book_count / 5);
-
-        
-
-
+        $data['book'] = $book;
         $item = Position::where('parent_id')->get();
         $data['itemParent'] = [];
         if (auth()->user()->position_id) {
