@@ -4,6 +4,7 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    @include('book.js.constants')
     var permission_id = '{{$permission_id}}';
     var selectPageTable = document.getElementById('page-select-card');
     var pageTotal = '{{$totalPages}}';
@@ -550,7 +551,7 @@
         $('#oldPositionPages').val('');
         $('#oldPositionWidth').val('');
         $('#oldPositionHeight').val('');
-        if (status == 2) {
+        if (status == STATUS.STAMPED) {
             $.get('/book/stamp_position/' + id, function(res){
                 if(res.status){
                     $('#oldPositionX').val(res.x);
@@ -564,12 +565,12 @@
         document.getElementById('add-stamp').disabled = true;
         // if (permission_id != '1') {
         if (type == 1) {
-            if (status == 1) {
+            if (status == STATUS.PENDING_STAMP) {
                 $('#add-stamp').show();
                 $('#save-stamp').show();
                 $('#insert-pages').show();
             }
-            if (status == 2) {
+            if (status == STATUS.STAMPED) {
                 $('#send-to').show();
                 $('#edit-stamp').show();
                 $('#save-stamp').show();
@@ -578,7 +579,7 @@
                 $('#save-stamp').show();
             }
         }
-        if (type == 2) {
+        f (type == 2) { 
             if (is_check == '' || is_check == 'null') {
                 $('#number-stamp').show();
                 $('#number-save').show();
@@ -586,13 +587,13 @@
                 $('#save-stamp').hide();
 
             } else {
-                if (status == 2) {
+                if (status == STATUS.STAMPED) {
                     $('#send-to').show();
                 }
             }
         }
         $.get('/book/created_position/' + id, function(res) {
-            if (status >= 3 && status < 15 && position_id != res.position_id) {
+            if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
                 document.getElementById('reject-book').disabled = false;
                 $('#reject-book').show();
             }

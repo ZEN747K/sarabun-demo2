@@ -4,6 +4,7 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
+        @include('book.js.constants')
         $('.btn-default').hide();
         var signature = '{{$signature}}';
         var selectPageTable = document.getElementById('page-select-card');
@@ -1303,12 +1304,12 @@
             $('#txt_label').text('');
             $('#users_id').val('');
             document.getElementById('add-stamp').disabled = true;
-            if (status == 3) {
+            if (status == STATUS.ADMIN_PROCESS) {
                 $('#insert-pages').show();
                 $('#add-stamp').show();
                 $('#save-stamp').show();
             }
-            if (status == 3.5) {
+            if (status == STATUS.WAITING_SIGNATURE) {
                 if (position_id != 1) {
                     document.getElementById('send-signature').disabled = false;
                     $('#send-signature').show();
@@ -1318,8 +1319,8 @@
                     $('#sendTo').show();
                 }
             }
-            if (status == 4) {
-                const perms = permission.split(',');
+            if (status == STATUS.SIGNED) {
+                const perms = permission.split(',').map(p => p.trim());
                 if (!perms.includes('3.5') && !perms.includes('4') && !perms.includes('5')) {
                     document.getElementById('send-signature').disabled = false;
                     $('#send-signature').show();
@@ -1329,16 +1330,16 @@
                     $('#send-save').show();
                 }
             }
-            if (status == 5) {
+            if (status == STATUS.SENT) {
                 $('#send-to').show();
                 $('#send-save').show();
             }
-            if (status == 14) {
+            if (status == STATUS.DIRECTORY) {
                 document.getElementById('directory-save').disabled = false;
                 $('#directory-save').show();
             }
-            $.get('/book/created_position/' + id, function(res) {
-                if (status >= 3 && status < 15 && position_id != res.position_id) {
+             $.get('/book/created_position/' + id, function(res) {
+            if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
                     document.getElementById('reject-book').disabled = false;
                     $('#reject-book').show();
                 }
