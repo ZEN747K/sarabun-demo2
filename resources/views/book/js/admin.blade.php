@@ -1319,7 +1319,8 @@
                 }
             }
             if (status == 4) {
-                if (!permission.includes('3,3.5,4,5')) {
+                const perms = permission.split(',');
+                if (!perms.includes('3.5') && !perms.includes('4') && !perms.includes('5')) {
                     document.getElementById('send-signature').disabled = false;
                     $('#send-signature').show();
                     $('#signature-save').show();
