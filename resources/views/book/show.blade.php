@@ -105,35 +105,38 @@
     </div>
     <div class="col-4">
         <div id="box-card-item" style="height: 808px;overflow: auto;">
-            @foreach ($book as $rec)
-            <?php
-            $color = 'info';
-            if ($rec->type != 1) {
-                $color = 'warning';
-            }
-            if ($rec->file) {
-                $action = "openPdf('" . $rec->url . "','" . $rec->id . "','" . $rec->status . "','" . $rec->type . "','" . $rec->is_number_stamp . "','" . $rec->inputBookregistNumber . "','" . $rec->position_id . "')";
-            } else {
-                $action = "uploadPdf('" . $rec->id . "')";
-            }
-            $text = '';
-            if ($rec->status == 14) {
-                $text = '';
-                $color = 'success';
-            }
-            ?>
-            <a href="javascript:void(0)" onclick="{{$action}}">
-                <div class="card border-{{$color}} mb-2">
-                    <div class="card-header text-dark fw-bold">{{$rec->inputSubject}} {{$text}}</div>
-                    <div class="card-body text-dark">
-                        <div class="row">
-                            <div class="col-9">{{ $rec->selectBookFrom }}</div>
-                            <div class="col-3 fw-bold">{{ $rec->showTime }} น.</div>
-                        </div>
-                    </div>
+           @foreach ($book as $rec)
+    <?php
+    $color = 'info';
+    if (!empty($rec) && isset($rec->type) && $rec->type != 1) {
+        $color = 'warning';
+    }
+    if (!empty($rec) && !empty($rec->file)) {
+        $action = "openPdf('" . $rec->url . "','" . $rec->id . "','" . $rec->status . "','" . $rec->type . "','" . $rec->is_number_stamp . "','" . $rec->inputBookregistNumber . "','" . $rec->position_id . "')";
+    } else {
+        $action = "uploadPdf('" . ($rec->id ?? '') . "')";
+    }
+    $text = '';
+    if (!empty($rec) && isset($rec->status) && $rec->status == 14) {
+        $text = '';
+        $color = 'success';
+    }
+    ?>
+    @if (!empty($rec))
+    <a href="javascript:void(0)" onclick="{{ $action }}">
+        <div class="card border-{{ $color }} mb-2">
+            <div class="card-header text-dark fw-bold">{{ $rec->inputSubject ?? '' }} {{ $text }}</div>
+            <div class="card-body text-dark">
+                <div class="row">
+                    <div class="col-9">{{ $rec->selectBookFrom ?? '' }}</div>
+                    <div class="col-3 fw-bold">{{ $rec->showTime ?? '' }} น.</div>
                 </div>
-            </a>
-            @endforeach
+            </div>
+        </div>
+    </a>
+    @endif
+@endforeach
+T
         </div>
         <div class="d-flex justify-content-end mt-2">
             <button class="btn btn-outline-dark btn-sm" style="margin-right: 5px;font-size: 5px;" id="prevPage"><i class="fa fa-arrow-circle-left"></i></button>
