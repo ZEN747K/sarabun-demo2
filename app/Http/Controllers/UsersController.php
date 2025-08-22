@@ -395,16 +395,24 @@ public function deletePermission($id)
 
     return response()->json(['ok' => true, 'is_receiver' => true, 'msg' => 'ตั้งเป็นผู้รับแทงเรื่องแล้ว']);
 }
-    public function parentOptions(Request $request) {
-    $positionId = (int)$request->query('position_id');
-    $excludeId  = (int)$request->query('exclude'); 
+   public function parentOptions(Request $request) {
+    $positionId = (int)$request->query('position_id');  
+    $excludeId  = (int)$request->query('exclude');
 
     $q = Permission::query()
-        ->when($positionId, fn($qq) => $qq->where('position_id', $positionId))
-        ->when($excludeId, fn($qq) => $qq->where('id', '<>', $excludeId))
-        ->orderBy('permission_name');
+        ->leftJoin('positions', 'permissions.position_id', '=', 'positions.id')
+        ->select(
+            'permissions.id',
+            'permissions.permission_name',
+            'permissions.position_id',
+            DB::raw('positions.position_name as department')
+        )
+        ->when($positionId, fn($qq) => $qq->where('permissions.position_id', $positionId))
+        ->when($excludeId,  fn($qq) => $qq->where('permissions.id', '<>', $excludeId))
+        ->orderBy('positions.position_name')
+        ->orderBy('permissions.permission_name');
 
-    return response()->json($q->get(['id', 'permission_name']));
+    return response()->json($q->get());
 }
 
 public function setParent(Request $request) {
