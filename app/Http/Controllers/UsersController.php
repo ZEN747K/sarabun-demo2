@@ -10,7 +10,7 @@ use App\Models\Users_permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Validator;
 class UsersController extends Controller
 {
     public $users;
@@ -378,10 +378,14 @@ public function deletePermission($id)
     }
 
     Users_permission::create([
-        'users_id'      => $user->id,
-        'permission_id' => $primaryPerm->parent_id,
-        'position_id'   => $user->position_id,
-    ]);
+    'users_id'      => $user->id,
+    'permission_id' => $primaryPerm->parent_id,
+    'position_id'   => $user->position_id,
+    'created_by'    => auth()->id(),
+    'updated_by'    => auth()->id(),
+    'created_at'    => now(),
+    'updated_at'    => now(),
+]);
 
     return response()->json(['ok' => true, 'is_receiver' => true, 'msg' => 'ตั้งเป็นผู้รับแทงเรื่องแล้ว']);
 }
