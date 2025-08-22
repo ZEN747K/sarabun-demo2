@@ -766,10 +766,6 @@ class BookController extends Controller
         }
     }
 
-public function checkbox_send()
-
-
-
     public function _checkbox_send()
     {
         $txt = '<div class="row d-flex align-items-start">';
