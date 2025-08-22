@@ -60,7 +60,7 @@
               position_id: res.position_id,  
               exclude: res.permission_id     
             }).done(list => {
-              // group by department
+              
               const byDept = list.reduce((acc, it) => {
                 const key = it.department || 'ไม่ระบุหน่วยงาน';
                 (acc[key] ||= []).push(it);
