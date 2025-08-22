@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Users_permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class UsersController extends Controller
 {
@@ -90,19 +91,36 @@ class UsersController extends Controller
     }
 
     public function listData()
-    {
-        $users = User::select('users.*', 'permissions.permission_name', 'positions.position_name')
-            ->whereNot('permission_id', '9')
-            ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
-            ->leftJoin('positions', 'users.position_id', '=', 'positions.id')
-            ->orderBy('users.id', 'asc')
-            ->get();
-        foreach ($users as $key => $value) {
-            $value->action = '<a href="' . url('/users/permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a><a href="' . url('/users/edit/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+{
+    $users = User::select('users.*', 'permissions.permission_name', 'positions.position_name')
+        ->whereNot('permission_id', '9')
+        ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
+        ->leftJoin('positions', 'users.position_id', '=', 'positions.id')
+        ->orderBy('users.id', 'asc')
+        ->get();
+
+    foreach ($users as $u) {
+        $primaryPerm = Permission::find($u->permission_id);
+        $isReceiver = false;
+        if ($primaryPerm && $primaryPerm->parent_id) {
+            $isReceiver = Users_permission::where('users_id', $u->id)
+                ->where('permission_id', $primaryPerm->parent_id)
+                ->where('position_id', $u->position_id)
+                ->exists();
         }
-        $data['data'] = $users;
-        return response()->json($data);
+        $u->is_receiver = $isReceiver;
+
+        $btnClass = $isReceiver ? 'btn-success' : 'btn-outline-secondary';
+        $btnText  = $isReceiver ? 'เป็นผู้รับอยู่' : 'ตั้งเป็นผู้รับ';
+        $u->receiver_button = '<button class="btn btn-sm '.$btnClass.' btn-toggle-receiver" data-id="'.$u->id.'" data-state="'.($isReceiver?1:0).'">'.$btnText.'</button>';
+
+        $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'
+                   . '<a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
     }
+
+    return response()->json(['data' => $users]);
+}
+
 
     public function edit($id)
     {
@@ -333,5 +351,38 @@ public function deletePermission($id)
         }
         return redirect()->back()->with('error', 'ไม่พบข้อมูล');
     }
+    public function toggleReceiver(Request $request) {
+    $request->validate([
+        'id' => 'required|integer'
+    ]);
+
+    $user = User::find($request->id);
+    if (!$user) {
+        return response()->json(['ok' => false, 'msg' => 'ไม่พบผู้ใช้'], 404);
+    }
+
+    $primaryPerm = Permission::find($user->permission_id);
+    if (!$primaryPerm || !$primaryPerm->parent_id) {
+        return response()->json(['ok' => false, 'msg' => 'สิทธิ์นี้ไม่มีผู้บังคับบัญชาที่กำหนด (parent_id)'], 422);
+    }
+
+    $existing = Users_permission::where('users_id', $user->id)
+        ->where('permission_id', $primaryPerm->parent_id)
+        ->where('position_id', $user->position_id)
+        ->first();
+
+    if ($existing) {
+        $existing->delete();
+        return response()->json(['ok' => true, 'is_receiver' => false, 'msg' => 'ยกเลิกผู้รับแทงเรื่องแล้ว']);
+    }
+
+    Users_permission::create([
+        'users_id'      => $user->id,
+        'permission_id' => $primaryPerm->parent_id,
+        'position_id'   => $user->position_id,
+    ]);
+
+    return response()->json(['ok' => true, 'is_receiver' => true, 'msg' => 'ตั้งเป็นผู้รับแทงเรื่องแล้ว']);
+}
     
 }

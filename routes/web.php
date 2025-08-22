@@ -101,6 +101,9 @@ Route::middleware('auth.admin')->group(function () {
     Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
     Route::get('/directory/create_directory', [DirectoryController::class, 'create_directory'])->name('directory.create_directory');
     Route::post('/directory/listData', [DirectoryController::class, 'listData'])->name('directory.listData');
+    Route::post('/users/toggleReceiver', [UsersController::class, 'toggleReceiver'])
+    ->name('users.toggleReceiver');
+
 });
 
 Route::get('/email', [EmailController::class, 'index'])->name('email.index');
