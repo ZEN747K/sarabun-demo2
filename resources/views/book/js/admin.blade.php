@@ -1604,7 +1604,7 @@
             $.ajax({
                 type: "post",
                 url: "/book/checkbox_send",
-                dataType: "json",
+                dataType: "html",
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
@@ -1618,9 +1618,10 @@
                         showCancelButton: true,
                         cancelButtonText: `ยกเลิก`,
                         preConfirm: () => {
-                            var selectedCheckboxes = [];
-                            var textCheckboxes = [];
-                            $('input[name="flexCheckChecked[]"]:checked').each(function () {
+                           const $popup = $('.swal2-container');
+                          const selectedCheckboxes = [];
+                          const textCheckboxes = [];
+                           $popup.find('input[name="flexCheckChecked[]"]:checked').each(function () {
                                 selectedCheckboxes.push($(this).val());
                                 textCheckboxes.push($(this).next('label').text().trim());
                             });
@@ -1657,7 +1658,10 @@
                             document.getElementById('send-save').disabled = false;
                         }
                     });
-                }
+                },
+                error: function (xhr) {
+     Swal.fire('', 'โหลดตัวเลือกไม่สำเร็จ (' + xhr.status + ')', 'error');
+   }
             });
         });
 
