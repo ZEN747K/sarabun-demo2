@@ -92,13 +92,17 @@ class UsersController extends Controller
 
     public function listData()
 {
-    $users = User::select('users.*', 'permissions.permission_name', 'positions.position_name')
+    $users = User::select(
+            'users.*',
+            DB::raw('permissions.permission_name as role_name'),   
+            DB::raw('positions.position_name   as department')    
+        )
         ->whereNot('permission_id', '9')
         ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
-        ->leftJoin('positions', 'users.position_id', '=', 'positions.id')
+        ->leftJoin('positions',   'users.position_id',   '=', 'positions.id')
         ->orderBy('users.id', 'asc')
         ->get()
-        ->map(function($u){
+        ->map(function ($u) {
             $primaryPerm = Permission::find($u->permission_id);
             $isReceiver = false;
             if ($primaryPerm && $primaryPerm->parent_id) {
@@ -108,12 +112,14 @@ class UsersController extends Controller
                     ->exists();
             }
             $u->is_receiver = $isReceiver;
-            $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a><a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+            $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'
+                       . '<a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
             return $u;
         });
 
     return response()->json(['data' => $users]);
 }
+
 
 
 
