@@ -813,58 +813,96 @@ class BookController extends Controller
 
 
 
-    public function send_to_save(Request $request)
-    {
-        $data['status'] = false;
-        $data['message'] = '';
-        $id = $request->input('id');
-        $users_id = $request->input('users_id');
-        $position_id = $request->input('position_id');
-        $status = $request->input('status');
-        $query = new Book;
-        $book = $query->where('id', $id)->first();
-        if (!empty($book)) {
-            if ($status == 14) {
-                $update = Log_status_book::where('position_id', $position_id)
-                    ->where('book_id', $id)
-                    ->first();
-                $getForward = Permission::where('can_status', 'like', "3,3.5%")
-                    ->leftJoin('users_permissions', 'users_permissions.permission_id', '=', 'permissions.id')
-                    ->where('permissions.position_id', $position_id)
-                    ->first();
-                $update->parentUsers = $getForward->users_id;
-            } else {
-                if (auth()->user()->position_id) {
-                    $update = Log_status_book::where('position_id', auth()->user()->position_id)->where('book_id', $id)->first();
-                } else {
-                    $update = Log_status_book::where('position_id', $position_id)->where('book_id', $id)->first();
-                }
-                $getForward = User::find($users_id);
-                $sql = Permission::where('id', $getForward->permission_id)->first();
-                $update->parentUsers = $users_id;
-            }
-            $update->status = $status;
-            $update->updated_at = date('Y-m-d H:i:s');
-            if ($update->save()) {
-                if ($status == 14) {
-                    $detail = 'ส่งเวียนหนังสือ';
-                } else {
-                    $detail = 'แทงเรื่อง (' . $getForward->fullname . '(' . $sql->permission_name . '))';
-                }
-                log_active([
-                    'users_id' => auth()->user()->id,
-                    'status' => $status,
-                    'datetime' => date('Y-m-d H:i:s'),
-                    'detail' => $detail,
-                    'book_id' => $id,
-                    'position_id' => $update->position_id
-                ]);
-                $data['status'] = true;
-                $data['message'] = 'แทงเรื่องเรียบร้อยแล้ว';
-            }
-        }
-        return response()->json($data);
+   use Illuminate\Support\Arr;
+
+public function send_to_save(Request $request)
+{
+    $resp = ['status' => false, 'message' => ''];
+
+    $id          = $request->input('id');
+    $usersIds    = Arr::wrap($request->input('users_id'));  
+    $position_id = $request->input('position_id');
+    $status      = (int) $request->input('status', 6);
+
+    $book = Book::find($id);
+    if (!$book) {
+        $resp['message'] = 'ไม่พบหนังสือ';
+        return response()->json($resp, 404);
     }
+
+    $update = auth()->user()->position_id
+        ? Log_status_book::where('position_id', auth()->user()->position_id)->where('book_id', $id)->first()
+        : Log_status_book::where('position_id', $position_id)->where('book_id', $id)->first();
+
+    if (!$update) {
+        $resp['message'] = 'ไม่พบสถานะของหนังสือสำหรับหน่วยงานนี้';
+        return response()->json($resp, 404);
+    }
+
+    if ($status === 14) {
+        $getForward = Permission::where('can_status', 'like', '3,3.5%')
+            ->leftJoin('users_permissions', 'users_permissions.permission_id', '=', 'permissions.id')
+            ->where('permissions.position_id', $position_id)
+            ->select('users_permissions.users_id')   
+            ->first();
+
+        if ($getForward) {
+            $update->parentUsers = $getForward->users_id;
+        }
+        $detail = 'ส่งเวียนหนังสือ';
+        $update->status = $status;
+        $update->updated_at = now();
+        $ok = $update->save();
+
+        if ($ok) {
+            log_active([
+                'users_id'    => auth()->id(),
+                'status'      => $status,
+                'datetime'    => now(),
+                'detail'      => $detail,
+                'book_id'     => $id,
+                'position_id' => $update->position_id,
+            ]);
+            return response()->json(['status' => true, 'message' => 'แทงเรื่องเรียบร้อยแล้ว']);
+        }
+
+        return response()->json($resp);
+    }
+
+    $anySaved = false;
+
+    foreach ($usersIds as $uid) {
+        $user = User::find($uid);
+        if (!$user) {
+            continue;
+        }
+        $perm = Permission::find($user->permission_id);
+
+     
+        $update->parentUsers = $user->id;
+        $update->status      = $status;
+        $update->updated_at  = now();
+        $anySaved = $update->save() || $anySaved;
+
+        log_active([
+            'users_id'    => auth()->id(),
+            'status'      => $status,
+            'datetime'    => now(),
+            'detail'      => 'แทงเรื่อง (' . ($user->fullname ?? 'ไม่ทราบชื่อ')
+                              . ' (' . ($perm->permission_name ?? '-') . '))',
+            'book_id'     => $id,
+            'position_id' => $update->position_id
+        ]);
+    }
+
+    if ($anySaved) {
+        return response()->json(['status' => true, 'message' => 'แทงเรื่องเรียบร้อยแล้ว']);
+    }
+
+    $resp['message'] = 'ไม่สามารถแทงเรื่องได้';
+    return response()->json($resp);
+}
+
 
     public function confirm_signature(Request $request)
     {

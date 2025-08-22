@@ -1636,7 +1636,13 @@
         url: '/book/send_to_save',
         dataType: 'json',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        data: { id, users_id, position_id, status },
+        data: { 
+    id, 
+    status, 
+    position_id, 
+    'users_id[]': users_id   
+  },
+  traditional: true
       }).done(res => {
         if (res.status) {
           Swal.fire('', 'แทงเรื่องเรียบร้อยแล้ว', 'success');
