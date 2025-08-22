@@ -579,7 +579,7 @@
                 $('#save-stamp').show();
             }
         }
-        f (type == 2) { 
+        if (type == 2) {
             if (is_check == '' || is_check == 'null') {
                 $('#number-stamp').show();
                 $('#number-save').show();
