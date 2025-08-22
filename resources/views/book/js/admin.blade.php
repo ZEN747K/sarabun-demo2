@@ -1599,71 +1599,55 @@
                 }
             });
         });
-        $('#send-to').click(function (e) {
-            e.preventDefault();
-            $.ajax({
-                type: "post",
-                url: "/book/checkbox_send",
-                dataType: "html",
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                success: function (response) {
-                    Swal.fire({
-                        title: 'แทงเรื่อง',
-                        html: response,
-                        allowOutsideClick: false,
-                        focusConfirm: true,
-                        confirmButtonText: 'ตกลง',
-                        showCancelButton: true,
-                        cancelButtonText: `ยกเลิก`,
-                        preConfirm: () => {
-                           const $popup = $('.swal2-container');
-                          const selectedCheckboxes = [];
-                          const textCheckboxes = [];
-                           $popup.find('input[name="flexCheckChecked[]"]:checked').each(function () {
-                                selectedCheckboxes.push($(this).val());
-                                textCheckboxes.push($(this).next('label').text().trim());
-                            });
+       $('#send-to').click(function (e) {
+  e.preventDefault();
 
-                            console.log(selectedCheckboxes);
-                            if (selectedCheckboxes.length === 0) {
-                                Swal.showValidationMessage('กรุณาเลือกตัวเลือก');
-                            }
+  // โหลด HTML checkbox รายชื่อผู้รับจาก server
+  $.post('/book/checkbox_send', {_token:'{{ csrf_token() }}'}).done(function(html){
+    Swal.fire({
+      title: 'แทงเรื่อง',
+      html: html,                  // มี <input type="checkbox" name="flexCheckChecked[]"> หลายตัว
+      showCancelButton: true,
+      confirmButtonText: 'ตกลง',
+      cancelButtonText: 'ยกเลิก',
+      focusConfirm: true,
+      allowOutsideClick: false,
+      preConfirm: () => {
+        // เก็บค่า user id ที่ถูกเลือก
+        const ids = Array.from(
+          document.querySelectorAll('input[name="flexCheckChecked[]"]:checked')
+        ).map(el => el.value);
 
-                            return {
-                                id: selectedCheckboxes,
-                                text: textCheckboxes
-                            };
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            var id = '';
-                            var txt = '- แทงเรื่อง ('
-                            for (let index = 0; index < result.value.text.length; index++) {
-                                if (index > 0 && index < result.value.text.length) {
-                                    txt += ',';
-                                }
-                                txt += result.value.text[index];
-                            }
-                            for (let index = 0; index < result.value.id.length; index++) {
-                                if (index > 0 && index < result.value.id.length) {
-                                    id += ',';
-                                }
-                                id += result.value.id[index];
-                            }
-                            txt += ') -';
-                            $('#txt_label').text(txt);
-                            $('#users_id').val(id);
-                            document.getElementById('send-save').disabled = false;
-                        }
-                    });
-                },
-                error: function (xhr) {
-     Swal.fire('', 'โหลดตัวเลือกไม่สำเร็จ (' + xhr.status + ')', 'error');
-   }
-            });
-        });
+        if (ids.length === 0) {
+          Swal.showValidationMessage('กรุณาเลือกอย่างน้อย 1 คน');
+        }
+        return ids; // ส่งต่อไปที่ .then(...)
+      }
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      const id = $('#id').val();                         
+      const position_id = $('#position_id').val() || ''; 
+      const users_id = result.value;                     
+      const status = 6;                                 
+
+      $.ajax({
+        type: 'post',
+        url: '/book/send_to_save',
+        dataType: 'json',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        data: { id, users_id, position_id, status },
+      }).done(res => {
+        if (res.status) {
+          Swal.fire('', 'แทงเรื่องเรียบร้อยแล้ว', 'success');
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          Swal.fire('', res.message || 'แทงเรื่องไม่สำเร็จ', 'error');
+        }
+      }).fail(() => Swal.fire('', 'เกิดข้อผิดพลาดในการส่ง', 'error'));
+    });
+  }).fail(() => Swal.fire('', 'โหลดรายชื่อผู้รับไม่สำเร็จ', 'error'));
+});
 
         $('#send-save').click(function (e) {
             e.preventDefault();
