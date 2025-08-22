@@ -65,11 +65,11 @@
           data: null,
           orderable: false,
           searchable: false,
-          render: row => {
-            return `
-              <a href="/users/${row.id}/edit" class="btn btn-sm btn-outline-secondary">แก้ไข</a>
-            `;
-          }
+         render: row => {
+  const base = `{{ url('/users/edit') }}`;   
+  return `<a href="${base}/${row.id}" class="btn btn-sm btn-outline-secondary">แก้ไข</a>`;
+}
+
         }
       ]
     });
