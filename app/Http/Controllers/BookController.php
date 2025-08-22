@@ -21,6 +21,7 @@ use Webklex\IMAP\Facades\Client;
 use Webklex\PHPIMAP\ClientManager;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
 class BookController extends Controller
 {
 
@@ -812,8 +813,6 @@ class BookController extends Controller
 }
 
 
-
-   use Illuminate\Support\Arr;
 
 public function send_to_save(Request $request)
 {
