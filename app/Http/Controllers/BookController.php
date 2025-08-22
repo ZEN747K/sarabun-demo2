@@ -766,25 +766,51 @@ class BookController extends Controller
         }
     }
 
-    public function _checkbox_send()
-    {
-        $txt = '<div class="row d-flex align-items-start">';
-        $get_users = Users_permission::select('users.*', 'permissions.permission_name')
+    public function checkbox_send()
+{
+    try {
+        if (!$this->permission_data || $this->permission_data->parent_id === null) {
+            return response('<div class="text-muted">ไม่พบตัวเลือกที่กำหนดสิทธิ์</div>', 200)
+                ->header('Content-Type', 'text/html');
+        }
+
+        $users = Users_permission::select('users.*', 'permissions.permission_name')
             ->join('users', 'users_permissions.users_id', '=', 'users.id')
             ->join('permissions', 'users_permissions.permission_id', '=', 'permissions.id')
+            ->when($this->position_id, function ($q) {
+                $q->where('users_permissions.position_id', $this->position_id);
+            })
             ->where('users_permissions.permission_id', $this->permission_data->parent_id)
+            ->orderBy('users.fullname')
             ->get();
-        $count = Users_permission::where('permission_id', $this->permission_data->parent_id)->count();
-        if (!empty($get_users)) {
-            for ($i = 0; $i < $count; $i++) {
-                $txt .= '<div class="col-1 mb-3"></div><div class="col-11 mb-2">';
-                $txt .= '<input type="checkbox" name="flexCheckChecked[]" id="flexCheckChecked' . $get_users[$i]->id . '" value="' . $get_users[$i]->id . '" class="form-check-input"><label style="margin-left:5px;" for="flexCheckChecked' . $get_users[$i]->id . '">' . $get_users[$i]->fullname . ' (' . $get_users[$i]->permission_name . ')' . '</label>';
-                $txt .= '</div>';
-            }
+
+        $html  = '<style>
+            .swal2-html-container .swal-item{display:flex;align-items:center;gap:8px;margin:6px 0;}
+            .swal2-html-container .swal-item input{flex:0 0 auto;margin:0;transform:scale(1.1);}
+            .swal2-html-container .swal-item span{line-height:1.4;}
+        </style><div class="row d-flex align-items-start">';
+
+        foreach ($users as $u) {
+            $id = (int)$u->id;
+            $label = e($u->fullname).' ('.e($u->permission_name).')';
+            $html .= '
+              <div class="col-1 mb-2"></div>
+              <div class="col-11 mb-2">
+                <label class="swal-item" for="flexCheckChecked'.$id.'">
+                  <input type="checkbox" name="flexCheckChecked[]" id="flexCheckChecked'.$id.'" value="'.$id.'" class="form-check-input">
+                  <span>'.$label.'</span>
+                </label>
+              </div>';
         }
-        $txt .= '</div>';
-        return response()->json($txt);
+        $html .= '</div>';
+
+        return response($html, 200)->header('Content-Type', 'text/html');
+    } catch (\Throwable $e) {
+        \Log::error('checkbox_send error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response('โหลดตัวเลือกไม่สำเร็จ', 500);
     }
+}
+
 
 
     public function send_to_save(Request $request)
