@@ -9,7 +9,8 @@ use App\Models\User;
 use App\Models\Users_permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 class UsersController extends Controller
 {
     public $users;
@@ -90,19 +91,37 @@ class UsersController extends Controller
     }
 
     public function listData()
-    {
-        $users = User::select('users.*', 'permissions.permission_name', 'positions.position_name')
-            ->whereNot('permission_id', '9')
-            ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
-            ->leftJoin('positions', 'users.position_id', '=', 'positions.id')
-            ->orderBy('users.id', 'asc')
-            ->get();
-        foreach ($users as $key => $value) {
-            $value->action = '<a href="' . url('/users/permission/' . $value->id) . '" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a><a href="' . url('/users/edit/' . $value->id) . '" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
-        }
-        $data['data'] = $users;
-        return response()->json($data);
-    }
+{
+    $users = User::select(
+            'users.*',
+            DB::raw('permissions.permission_name as role_name'),   
+            DB::raw('positions.position_name   as department')    
+        )
+        ->whereNot('permission_id', '9')
+        ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
+        ->leftJoin('positions',   'users.position_id',   '=', 'positions.id')
+        ->orderBy('users.id', 'asc')
+        ->get()
+        ->map(function ($u) {
+            $primaryPerm = Permission::find($u->permission_id);
+            $isReceiver = false;
+            if ($primaryPerm && $primaryPerm->parent_id) {
+                $isReceiver = Users_permission::where('users_id', $u->id)
+                    ->where('permission_id', $primaryPerm->parent_id)
+                    ->where('position_id', $u->position_id)
+                    ->exists();
+            }
+            $u->is_receiver = $isReceiver;
+            $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'
+                       . '<a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+            return $u;
+        });
+
+    return response()->json(['data' => $users]);
+}
+
+
+
 
     public function edit($id)
     {
@@ -333,5 +352,90 @@ public function deletePermission($id)
         }
         return redirect()->back()->with('error', 'ไม่พบข้อมูล');
     }
-    
+   public function toggleReceiver(Request $request) {
+    $request->validate([
+        'id' => 'required|integer'
+    ]);
+
+    $user = User::find($request->id);
+    if (!$user) {
+        return response()->json(['ok' => false, 'msg' => 'ไม่พบผู้ใช้'], 404);
+    }
+
+    $primaryPerm = Permission::find($user->permission_id);
+    if (!$primaryPerm || !$primaryPerm->parent_id) {
+        return response()->json([
+            'ok' => false,
+            'need_parent' => true,
+            'permission_id' => $primaryPerm?->id,
+            'position_id'   => $user->position_id,
+            'msg' => 'สิทธิ์นี้ไม่มีผู้บังคับบัญชาที่กำหนด (parent_id)'
+        ], 422);
+    }
+
+    $existing = Users_permission::where('users_id', $user->id)
+        ->where('permission_id', $primaryPerm->parent_id)
+        ->where('position_id', $user->position_id)
+        ->first();
+
+    if ($existing) {
+        $existing->delete();
+        return response()->json(['ok' => true, 'is_receiver' => false, 'msg' => 'ยกเลิกผู้รับแทงเรื่องแล้ว']);
+    }
+
+    Users_permission::create([
+    'users_id'      => $user->id,
+    'permission_id' => $primaryPerm->parent_id,
+    'position_id'   => $user->position_id,
+    'created_by'    => auth()->id(),
+    'updated_by'    => auth()->id(),
+    'created_at'    => now(),
+    'updated_at'    => now(),
+]);
+
+    return response()->json(['ok' => true, 'is_receiver' => true, 'msg' => 'ตั้งเป็นผู้รับแทงเรื่องแล้ว']);
+}
+   public function parentOptions(Request $request) {
+    $positionId = (int)$request->query('position_id');  
+    $excludeId  = (int)$request->query('exclude');
+
+    $q = Permission::query()
+        ->leftJoin('positions', 'permissions.position_id', '=', 'positions.id')
+        ->select(
+            'permissions.id',
+            'permissions.permission_name',
+            'permissions.position_id',
+            DB::raw('positions.position_name as department')
+        )
+        ->when($positionId, fn($qq) => $qq->where('permissions.position_id', $positionId))
+        ->when($excludeId,  fn($qq) => $qq->where('permissions.id', '<>', $excludeId))
+        ->orderBy('positions.position_name')
+        ->orderBy('permissions.permission_name');
+
+    return response()->json($q->get());
+}
+
+public function setParent(Request $request) {
+    $v = Validator::make($request->all(), [
+        'permission_id' => 'required|integer|exists:permissions,id',
+        'parent_id'     => 'required|integer|exists:permissions,id'
+    ], [], [
+        'permission_id' => 'สิทธิ์',
+        'parent_id'     => 'ผู้บังคับบัญชา',
+    ]);
+
+    if ($v->fails()) {
+        return response()->json(['ok'=>false,'msg'=>$v->errors()->first()], 422);
+    }
+
+    $perm = Permission::find($request->permission_id);
+    $perm->parent_id = (int)$request->parent_id;
+    $perm->updated_by = auth()->id();
+    $perm->updated_at = now();
+    $perm->save();
+
+    return response()->json(['ok'=>true, 'msg'=>'บันทึกผู้บังคับบัญชาเรียบร้อย']);
+}
+
+
 }

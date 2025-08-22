@@ -4,6 +4,7 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
+        @include('book.js.constants')
         $('.btn-default').hide();
         var signature = '{{$signature}}';
         var selectPageTable = document.getElementById('page-select-card');
@@ -1303,23 +1304,25 @@
             $('#txt_label').text('');
             $('#users_id').val('');
             document.getElementById('add-stamp').disabled = true;
-            if (status == 3) {
+            if (status == STATUS.ADMIN_PROCESS) {
                 $('#insert-pages').show();
                 $('#add-stamp').show();
                 $('#save-stamp').show();
             }
-            if (status == 3.5) {
-                if (position_id != 1) {
-                    document.getElementById('send-signature').disabled = false;
-                    $('#send-signature').show();
-                    $('#signature-save').show();
-                    $('#insert-pages').show();
-                } else {
-                    $('#sendTo').show();
-                }
-            }
-            if (status == 4) {
-                if (!permission.includes('3,3.5,4,5')) {
+            if (status == STATUS.WAITING_SIGNATURE) {
+    const perms = permission.split(',').map(p => p.trim());
+    if (perms.includes('3.5') || perms.includes('4') || perms.includes('5')) {
+        document.getElementById('send-signature').disabled = false;
+        $('#send-signature').show();
+        $('#signature-save').show();
+        $('#insert-pages').show();
+    } else {
+        $('#sendTo').show();
+    }
+}
+            if (status == STATUS.SIGNED) {
+                const perms = permission.split(',').map(p => p.trim());
+                if (!perms.includes('3.5') && !perms.includes('4') && !perms.includes('5')) {
                     document.getElementById('send-signature').disabled = false;
                     $('#send-signature').show();
                     $('#signature-save').show();
@@ -1328,16 +1331,16 @@
                     $('#send-save').show();
                 }
             }
-            if (status == 5) {
+            if (status == STATUS.SENT) {
                 $('#send-to').show();
                 $('#send-save').show();
             }
-            if (status == 14) {
+            if (status == STATUS.DIRECTORY) {
                 document.getElementById('directory-save').disabled = false;
                 $('#directory-save').show();
             }
-            $.get('/book/created_position/' + id, function(res) {
-                if (status >= 3 && status < 15 && position_id != res.position_id) {
+             $.get('/book/created_position/' + id, function(res) {
+            if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
                     document.getElementById('reject-book').disabled = false;
                     $('#reject-book').show();
                 }
@@ -1601,7 +1604,7 @@
             $.ajax({
                 type: "post",
                 url: "/book/checkbox_send",
-                dataType: "json",
+                dataType: "html",
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
@@ -1615,9 +1618,10 @@
                         showCancelButton: true,
                         cancelButtonText: `ยกเลิก`,
                         preConfirm: () => {
-                            var selectedCheckboxes = [];
-                            var textCheckboxes = [];
-                            $('input[name="flexCheckChecked[]"]:checked').each(function () {
+                           const $popup = $('.swal2-container');
+                          const selectedCheckboxes = [];
+                          const textCheckboxes = [];
+                           $popup.find('input[name="flexCheckChecked[]"]:checked').each(function () {
                                 selectedCheckboxes.push($(this).val());
                                 textCheckboxes.push($(this).next('label').text().trim());
                             });
@@ -1654,7 +1658,10 @@
                             document.getElementById('send-save').disabled = false;
                         }
                     });
-                }
+                },
+                error: function (xhr) {
+     Swal.fire('', 'โหลดตัวเลือกไม่สำเร็จ (' + xhr.status + ')', 'error');
+   }
             });
         });
 
@@ -1941,7 +1948,7 @@
                 text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
                 icon: "warning",
                 input: 'textarea',
-                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ11',
+                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ',
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",

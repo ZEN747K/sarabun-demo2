@@ -4,6 +4,7 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    @include('book.js.constants')
     $('.btn-default').hide();
     var signature = '{{$signature}}';
     var selectPageTable = document.getElementById('page-select-card');
@@ -331,16 +332,16 @@
         $('#txt_label').text('');
         $('#users_id').val('');
         document.getElementById('manager-save').disabled = true;
-        if (status == 10) {
+        if (status == STATUS.MAYOR1_SIGNATURE) {
             $('#manager-sinature').show();
             $('#manager-save').show();
         }
-        if (status == 11) {
+        if (status == STATUS.MAYOR1_SENT) {
             $('#manager-send').show();
             $('#send-save').show();
         }
         $.get('/book/created_position/' + id, function(res) {
-            if (status >= 3 && status < 15 && position_id != res.position_id) {
+            if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
                 document.getElementById('reject-book').disabled = false;
                 $('#reject-book').show();
             }
