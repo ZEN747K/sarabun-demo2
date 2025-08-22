@@ -112,8 +112,12 @@ class UsersController extends Controller
                     ->exists();
             }
             $u->is_receiver = $isReceiver;
-            $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'
-                       . '<a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+           $u->action =
+    '<a href="'.route('users.permission', ['id' => $u->id]).'"
+        class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'.
+    '<a href="'.route('users.edit', ['id' => $u->id]).'"
+        class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+
             return $u;
         });
 

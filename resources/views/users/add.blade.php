@@ -17,7 +17,7 @@
       <table id="users-table" class="display" style="width:100%">
         <thead>
           <tr>
-            <th>email</th>
+            <th>ID</th>
             <th>ชื่อ</th>
             <th>ตำแหน่ง</th>
             <th>หน่วยงาน</th>
