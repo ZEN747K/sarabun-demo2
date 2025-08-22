@@ -97,29 +97,24 @@ class UsersController extends Controller
         ->leftJoin('permissions', 'users.permission_id', '=', 'permissions.id')
         ->leftJoin('positions', 'users.position_id', '=', 'positions.id')
         ->orderBy('users.id', 'asc')
-        ->get();
-
-    foreach ($users as $u) {
-        $primaryPerm = Permission::find($u->permission_id);
-        $isReceiver = false;
-        if ($primaryPerm && $primaryPerm->parent_id) {
-            $isReceiver = Users_permission::where('users_id', $u->id)
-                ->where('permission_id', $primaryPerm->parent_id)
-                ->where('position_id', $u->position_id)
-                ->exists();
-        }
-        $u->is_receiver = $isReceiver;
-
-        $btnClass = $isReceiver ? 'btn-success' : 'btn-outline-secondary';
-        $btnText  = $isReceiver ? 'เป็นผู้รับอยู่' : 'ตั้งเป็นผู้รับ';
-        $u->receiver_button = '<button class="btn btn-sm '.$btnClass.' btn-toggle-receiver" data-id="'.$u->id.'" data-state="'.($isReceiver?1:0).'">'.$btnText.'</button>';
-
-        $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a>'
-                   . '<a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
-    }
+        ->get()
+        ->map(function($u){
+            $primaryPerm = Permission::find($u->permission_id);
+            $isReceiver = false;
+            if ($primaryPerm && $primaryPerm->parent_id) {
+                $isReceiver = Users_permission::where('users_id', $u->id)
+                    ->where('permission_id', $primaryPerm->parent_id)
+                    ->where('position_id', $u->position_id)
+                    ->exists();
+            }
+            $u->is_receiver = $isReceiver;
+            $u->action = '<a href="'.url('/users/permission/'.$u->id).'" class="btn btn-sm btn-outline-primary m-1"><i class="fa fa-users"></i></a><a href="'.url('/users/edit/'.$u->id).'" class="btn btn-sm btn-outline-primary"><i class="fa fa-edit"></i></a>';
+            return $u;
+        });
 
     return response()->json(['data' => $users]);
 }
+
 
 
     public function edit($id)
@@ -351,7 +346,7 @@ public function deletePermission($id)
         }
         return redirect()->back()->with('error', 'ไม่พบข้อมูล');
     }
-    public function toggleReceiver(Request $request) {
+   public function toggleReceiver(Request $request) {
     $request->validate([
         'id' => 'required|integer'
     ]);
@@ -363,7 +358,13 @@ public function deletePermission($id)
 
     $primaryPerm = Permission::find($user->permission_id);
     if (!$primaryPerm || !$primaryPerm->parent_id) {
-        return response()->json(['ok' => false, 'msg' => 'สิทธิ์นี้ไม่มีผู้บังคับบัญชาที่กำหนด (parent_id)'], 422);
+        return response()->json([
+            'ok' => false,
+            'need_parent' => true,
+            'permission_id' => $primaryPerm?->id,
+            'position_id'   => $user->position_id,
+            'msg' => 'สิทธิ์นี้ไม่มีผู้บังคับบัญชาที่กำหนด (parent_id)'
+        ], 422);
     }
 
     $existing = Users_permission::where('users_id', $user->id)
@@ -384,5 +385,39 @@ public function deletePermission($id)
 
     return response()->json(['ok' => true, 'is_receiver' => true, 'msg' => 'ตั้งเป็นผู้รับแทงเรื่องแล้ว']);
 }
-    
+    public function parentOptions(Request $request) {
+    $positionId = (int)$request->query('position_id');
+    $excludeId  = (int)$request->query('exclude'); 
+
+    $q = Permission::query()
+        ->when($positionId, fn($qq) => $qq->where('position_id', $positionId))
+        ->when($excludeId, fn($qq) => $qq->where('id', '<>', $excludeId))
+        ->orderBy('permission_name');
+
+    return response()->json($q->get(['id', 'permission_name']));
+}
+
+public function setParent(Request $request) {
+    $v = Validator::make($request->all(), [
+        'permission_id' => 'required|integer|exists:permissions,id',
+        'parent_id'     => 'required|integer|exists:permissions,id'
+    ], [], [
+        'permission_id' => 'สิทธิ์',
+        'parent_id'     => 'ผู้บังคับบัญชา',
+    ]);
+
+    if ($v->fails()) {
+        return response()->json(['ok'=>false,'msg'=>$v->errors()->first()], 422);
+    }
+
+    $perm = Permission::find($request->permission_id);
+    $perm->parent_id = (int)$request->parent_id;
+    $perm->updated_by = auth()->id();
+    $perm->updated_at = now();
+    $perm->save();
+
+    return response()->json(['ok'=>true, 'msg'=>'บันทึกผู้บังคับบัญชาเรียบร้อย']);
+}
+
+
 }

@@ -105,6 +105,14 @@ Route::middleware('auth.admin')->group(function () {
     ->name('users.toggleReceiver');
     Route::post('/users/toggle-receiver', [UsersController::class, 'toggleReceiver'])->name('users.toggleReceiver');
 
+
+     Route::get('/permissions/parent-options', [UsersController::class, 'parentOptions'])
+        ->name('permissions.parent_options'); 
+    Route::post('/permissions/set-parent', [UsersController::class, 'setParent'])
+        ->name('permissions.set_parent');
+
+    Route::post('/users/toggle-receiver', [UsersController::class, 'toggleReceiver'])
+        ->name('users.toggle_receiver');
 });
 
 Route::get('/email', [EmailController::class, 'index'])->name('email.index');
