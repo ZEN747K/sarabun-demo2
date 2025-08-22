@@ -103,6 +103,7 @@ Route::middleware('auth.admin')->group(function () {
     Route::post('/directory/listData', [DirectoryController::class, 'listData'])->name('directory.listData');
     Route::post('/users/toggleReceiver', [UsersController::class, 'toggleReceiver'])
     ->name('users.toggleReceiver');
+    Route::post('/users/toggle-receiver', [UsersController::class, 'toggleReceiver'])->name('users.toggleReceiver');
 
 });
 
