@@ -766,7 +766,7 @@ class BookController extends Controller
         }
     }
 
-    public function checkbox_send()
+  public function checkbox_send()
 {
     if (!$this->permission_data || $this->permission_data->parent_id === null) {
         return response('<div class="text-muted">ไม่พบตัวเลือกที่กำหนดสิทธิ์</div>', 200)
@@ -780,22 +780,30 @@ class BookController extends Controller
         ->where('users_permissions.permission_id', $this->permission_data->parent_id)
         ->get();
 
-    $html = '<div class="row d-flex align-items-start">';
+    $html  = '<style>
+        .swal2-html-container .swal-item{
+            display:flex; align-items:flex-start; gap:8px; margin:6px 0;
+        }
+        .swal2-html-container .swal-item input{
+            flex:0 0 auto; margin:0; /* ไม่ให้ดันลงบรรทัดใหม่ */
+        }
+        .swal2-html-container .swal-item span{
+            display:block; line-height:1.5; /* ข้อความยาวตัดบรรทัดได้ แต่เริ่มที่บรรทัดเดียวกับ checkbox */
+        }
+    </style>';
 
     foreach ($users as $u) {
-        $html .= '<div class="col-1 mb-3"></div><div class="col-11 mb-2">';
-        $html .= '<input type="checkbox" name="flexCheckChecked[]" '
-            .'id="flexCheckChecked'.$u->id.'" value="'.$u->id.'" class="form-check-input">'
-            .'<label style="margin-left:5px;" for="flexCheckChecked'.$u->id.'">'
-            .e($u->fullname).' ('.e($u->permission_name).')'
-            .'</label>';
-        $html .= '</div>';
+        $id = (int)$u->id;
+        $html .= '
+          <label for="flexCheck'.$id.'" class="swal-item">
+            <input type="checkbox" id="flexCheck'.$id.'" name="flexCheckChecked[]" value="'.$id.'">
+            <span>'.e($u->fullname).' ('.e($u->permission_name).')</span>
+          </label>';
     }
-
-    $html .= '</div>';
 
     return response($html, 200)->header('Content-Type', 'text/html');
 }
+
 
 
     public function _checkbox_send()
