@@ -12,6 +12,13 @@
     var pageNumTalbe = 1;
 
     var imgData = null;
+    // Preload signature image and track load state
+    var signatureImg = new Image();
+    var signatureImgLoaded = false;
+    signatureImg.onload = function() { signatureImgLoaded = true; };
+    signatureImg.src = signature;
+    // Store coordinates for draggable boxes
+    var signatureCoordinates = null;
 
     function pdf(url) {
         var pdfDoc = null,
@@ -27,7 +34,7 @@
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
 
-        var markCoordinates = null;
+        
 
         document.getElementById('manager-save').disabled = true;
 
@@ -236,145 +243,280 @@
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
 
-                        markEventListener = function(e) {
-                            var markCanvas = document.getElementById('mark-layer');
-                            var markCtx = markCanvas.getContext('2d');
-                            var rect = markCanvas.getBoundingClientRect();
-                            var startX = (e.clientX - rect.left);
-                            var startY = (e.clientY - rect.top);
+                        // === Drag & Resize selection (main canvas) ===
+document.getElementById('manager-sinature').disabled = true;
+document.getElementById('manager-save').disabled = false;
 
-                            var endX = startX + 230;
-                            var endY = startY + 115;
+var markCanvas = document.getElementById('mark-layer');
+var markCtx = markCanvas.getContext('2d');
 
-                            markCoordinates = {
-                                startX,
-                                startY,
-                                endX,
-                                endY
-                            };
-                            $('#positionX').val(startX);
-                            $('#positionY').val(startY);
-                            $('#positionPages').val(1);
+// Default boxes
+var defaultTextWidth = 220;
+var defaultTextHeight = 40;
+var defaultBottomBoxHeight = 80;
+var defaultImageWidth = 240;
+var defaultImageHeight = 130;
 
-                            var text = $('#modal-text').val();
-                            var lineBreakCount = countLineBreaks(text);
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function() {
-                                return $(this).val();
-                            }).get();
-                            drawMarkSignature(startX - 40, startY + (20 * lineBreakCount), endX, endY, checkedValues);
-                            drawTextHeaderSignature('15px Sarabun', startX, startY, text);
+var startX = (markCanvas.width - defaultTextWidth) / 2;
+var startY = (markCanvas.height - (defaultTextHeight + defaultBottomBoxHeight + defaultImageHeight + 40)) / 2;
 
-                            var i = 0;
-                            var checkbox_text = '';
-                            var checkbox_x = 0;
-                            var plus_y = 20;
-                            checkedValues.forEach(element => {
-                                if (element == 4) {
-                                    plus_y = 160;
-                                }
-                            });
+signatureCoordinates = {
+    textBox: {
+        startX: startX,
+        startY: startY,
+        endX: startX + defaultTextWidth,
+        endY: startY + defaultTextHeight,
+        type: 'text'
+    },
+    bottomBox: {
+        startX: startX,
+        startY: startY + defaultTextHeight + 10,
+        endX: startX + defaultTextWidth,
+        endY: startY + defaultTextHeight + 10 + defaultBottomBoxHeight,
+        type: 'bottom'
+    },
+    imageBox: {
+        startX: startX - 13,
+        startY: startY + defaultTextHeight + defaultBottomBoxHeight + 20,
+        endX: startX + defaultImageWidth - 13,
+        endY: startY + defaultTextHeight + defaultBottomBoxHeight + 20 + defaultImageHeight,
+        type: 'image'
+    }
+};
 
-                            checkedValues.forEach(element => {
-                                switch (element) {
-                                    case '1':
-                                        checkbox_text = `({{$users->fullname}})`;
-                                        break;
-                                    case '2':
-                                        checkbox_text = `{{$permission_data->permission_name}}`;
-                                        break;
-                                    case '3':
-                                        checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
-                                        break;
-                                }
-                                var lines = checkbox_text.split('\n');
-                                if (element != 4) {
-                                    drawTextHeaderSignature('15px Sarabun', startX, (startY + plus_y + (20 * lineBreakCount)) + (20 * i), checkbox_text);
-                                }
-                                if (lines.length > 1) {
-                                    var stop = 0;
-                                    lines.forEach(element => {
-                                        if (stop != 0) {
-                                            i++;
-                                        }
-                                        stop++;
-                                    });
-                                }
-                                i++;
-                            });
-                        };
+$('#positionX').val(startX);
+$('#positionY').val(startY);
+$('#positionPages').val(1);
 
-                        var markCanvas = document.getElementById('mark-layer');
-                        markCanvas.addEventListener('click', markEventListener);
+redrawSignatureBoxes();
 
-                        markEventListenerInsert = function(e) {
-                            var markCanvas = document.getElementById('mark-layer-insert');
-                            var markCtx = markCanvas.getContext('2d');
-                            var rect = markCanvas.getBoundingClientRect();
-                            var startX = (e.clientX - rect.left);
-                            var startY = (e.clientY - rect.top);
+var isDragging = false;
+var isResizing = false;
+var activeBox = null;
+var dragOffsetX = 0;
+var dragOffsetY = 0;
+var resizeHandleSize = 16;
 
-                            var endX = startX + 230;
-                            var endY = startY + 115;
+function redrawSignatureBoxes() {
+    markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
 
-                            markCoordinates = {
-                                startX,
-                                startY,
-                                endX,
-                                endY
-                            };
-                            $('#positionX').val(startX);
-                            $('#positionY').val(startY);
-                            $('#positionPages').val(2);
+    var text = $('#modal-text').val();
+    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
 
-                            var text = $('#modal-text').val();
-                            var lineBreakCount = countLineBreaks(text);
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function() {
-                                return $(this).val();
-                            }).get();
-                            drawMarkSignatureInsert(startX - 40, startY + (20 * lineBreakCount), endX, endY, checkedValues);
-                            drawTextHeaderSignatureInsert('15px Sarabun', startX, startY, text);
+    var textBox = signatureCoordinates.textBox;
+    markCtx.save();
+    markCtx.strokeStyle = 'blue';
+    markCtx.lineWidth = 0.5;
+    markCtx.strokeRect(textBox.startX, textBox.startY, textBox.endX - textBox.startX, textBox.endY - textBox.startY);
+    markCtx.fillStyle = '#fff';
+    markCtx.strokeStyle = '#007bff';
+    markCtx.lineWidth = 2;
+    markCtx.fillRect(textBox.endX - resizeHandleSize, textBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+    markCtx.strokeRect(textBox.endX - resizeHandleSize, textBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+    markCtx.restore();
 
-                            var i = 0;
-                            var checkbox_text = '';
-                            var checkbox_x = 0;
-                            var plus_y = 20;
-                            checkedValues.forEach(element => {
-                                if (element == 4) {
-                                    plus_y = 160;
-                                }
-                            });
+    var textScale = Math.min((textBox.endX - textBox.startX) / 220, (textBox.endY - textBox.startY) / 40);
+    textScale = Math.max(0.5, Math.min(2.5, textScale));
+    drawTextHeaderSignature((15 * textScale).toFixed(1) + 'px Sarabun', (textBox.startX + textBox.endX) / 2, textBox.startY + 25 * textScale, text);
 
-                            checkedValues.forEach(element => {
-                                switch (element) {
-                                    case '1':
-                                        checkbox_text = `({{$users->fullname}})`;
-                                        break;
-                                    case '2':
-                                        checkbox_text = `{{$permission_data->permission_name}}`;
-                                        break;
-                                    case '3':
-                                        checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
-                                        break;
-                                }
-                                var lines = checkbox_text.split('\n');
-                                if (element != 4) {
-                                    drawTextHeaderSignatureInsert('15px Sarabun', startX, (startY + plus_y + (20 * lineBreakCount)) + (20 * i), checkbox_text);
-                                }
-                                if (lines.length > 1) {
-                                    var stop = 0;
-                                    lines.forEach(element => {
-                                        if (stop != 0) {
-                                            i++;
-                                        }
-                                        stop++;
-                                    });
-                                }
-                                i++;
-                            });
-                        };
+    var bottomBox = signatureCoordinates.bottomBox;
+    markCtx.save();
+    markCtx.strokeStyle = 'purple';
+    markCtx.lineWidth = 0.5;
+    markCtx.strokeRect(bottomBox.startX, bottomBox.startY, bottomBox.endX - bottomBox.startX, bottomBox.endY - bottomBox.startY);
+    markCtx.fillStyle = '#fff';
+    markCtx.strokeStyle = '#6f42c1';
+    markCtx.lineWidth = 2;
+    markCtx.fillRect(bottomBox.endX - resizeHandleSize, bottomBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+    markCtx.strokeRect(bottomBox.endX - resizeHandleSize, bottomBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+    markCtx.restore();
 
-                        var markCanvas = document.getElementById('mark-layer-insert');
-                        markCanvas.addEventListener('click', markEventListenerInsert);
+    var bottomScale = Math.min((bottomBox.endX - bottomBox.startX) / 220, (bottomBox.endY - bottomBox.startY) / 80);
+    bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
+    var i = 0;
+    checkedValues.forEach(function (element) {
+        if (element != 4) {
+            var checkbox_text = '';
+            switch (element) {
+                case '1':
+                    checkbox_text = `({{$users->fullname}})`;
+                    break;
+                case '2':
+                    checkbox_text = `{{$permission_data->permission_name}}`;
+                    break;
+                case '3':
+                    checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
+                    break;
+            }
+            drawTextHeaderSignature((15 * bottomScale).toFixed(1) + 'px Sarabun',
+                (bottomBox.startX + bottomBox.endX) / 2,
+                bottomBox.startY + 25 * bottomScale + (20 * i * bottomScale),
+                checkbox_text);
+            i++;
+        }
+    });
+
+                        var hasImage = checkedValues.includes('4');
+    if (hasImage) {
+        var imageBox = signatureCoordinates.imageBox;
+        markCtx.save();
+        markCtx.strokeStyle = 'green';
+        markCtx.lineWidth = 0.5;
+        markCtx.strokeRect(imageBox.startX, imageBox.startY, imageBox.endX - imageBox.startX, imageBox.endY - imageBox.startY);
+        markCtx.fillStyle = '#fff';
+        markCtx.strokeStyle = '#28a745';
+        markCtx.lineWidth = 2;
+        markCtx.fillRect(imageBox.endX - resizeHandleSize, imageBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+        markCtx.strokeRect(imageBox.endX - resizeHandleSize, imageBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
+        markCtx.restore();
+
+        var imgWidth = imageBox.endX - imageBox.startX;
+        var imgHeight = imageBox.endY - imageBox.startY;
+        if (signatureImgLoaded) {
+            markCtx.drawImage(signatureImg, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
+            imgData = {
+                x: imageBox.startX,
+                y: imageBox.startY,
+                width: imgWidth,
+                height: imgHeight
+            };
+        }
+    }
+}
+
+function isOnResizeHandle(mouseX, mouseY, box) {
+    return (
+        mouseX >= box.endX - resizeHandleSize && mouseX <= box.endX &&
+        mouseY >= box.endY - resizeHandleSize && mouseY <= box.endY
+    );
+}
+
+function isInBox(mouseX, mouseY, box) {
+    return (
+        mouseX >= box.startX && mouseX <= box.endX &&
+        mouseY >= box.startY && mouseY <= box.endY
+    );
+}
+
+function getActiveBox(mouseX, mouseY) {
+    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
+    var hasImage = checkedValues.includes('4');
+    if (isInBox(mouseX, mouseY, signatureCoordinates.bottomBox)) {
+        return signatureCoordinates.bottomBox;
+    } else if (hasImage && isInBox(mouseX, mouseY, signatureCoordinates.imageBox)) {
+        return signatureCoordinates.imageBox;
+    } else if (isInBox(mouseX, mouseY, signatureCoordinates.textBox)) {
+        return signatureCoordinates.textBox;
+    }
+    return null;
+}
+
+markCanvas.addEventListener('mousemove', function (e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
+    var hasImage = checkedValues.includes('4');
+    if (isOnResizeHandle(x, y, signatureCoordinates.textBox) ||
+        isOnResizeHandle(x, y, signatureCoordinates.bottomBox) ||
+        (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox))) {
+        markCanvas.style.cursor = 'se-resize';
+    } else if (getActiveBox(x, y)) {
+        markCanvas.style.cursor = 'move';
+    } else {
+        markCanvas.style.cursor = 'default';
+    }
+});
+
+markCanvas.onmousedown = function (e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
+    var hasImage = checkedValues.includes('4');
+    if (isOnResizeHandle(x, y, signatureCoordinates.textBox)) {
+        isResizing = true;
+        activeBox = signatureCoordinates.textBox;
+        e.preventDefault();
+        window.addEventListener('mousemove', onResizeMove);
+        window.addEventListener('mouseup', onResizeEnd);
+    } else if (isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
+        isResizing = true;
+        activeBox = signatureCoordinates.bottomBox;
+        e.preventDefault();
+        window.addEventListener('mousemove', onResizeMove);
+        window.addEventListener('mouseup', onResizeEnd);
+    } else if (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox)) {
+        isResizing = true;
+        activeBox = signatureCoordinates.imageBox;
+        e.preventDefault();
+        window.addEventListener('mousemove', onResizeMove);
+        window.addEventListener('mouseup', onResizeEnd);
+    } else {
+        activeBox = getActiveBox(x, y);
+        if (activeBox) {
+            isDragging = true;
+            dragOffsetX = x - activeBox.startX;
+            dragOffsetY = y - activeBox.startY;
+            e.preventDefault();
+            window.addEventListener('mousemove', onDragMove);
+            window.addEventListener('mouseup', onDragEnd);
+        }
+    }
+};
+
+function onDragMove(e) {
+    if (!isDragging || !activeBox) return;
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var w = activeBox.endX - activeBox.startX;
+    var h = activeBox.endY - activeBox.startY;
+    var nsx = x - dragOffsetX;
+    var nsy = y - dragOffsetY;
+    nsx = Math.max(0, Math.min(markCanvas.width - w, nsx));
+    nsy = Math.max(0, Math.min(markCanvas.height - h, nsy));
+    activeBox.startX = nsx;
+    activeBox.startY = nsy;
+    activeBox.endX = nsx + w;
+    activeBox.endY = nsy + h;
+    if (activeBox.type === 'text') {
+        $('#positionX').val(nsx);
+        $('#positionY').val(nsy);
+    }
+    redrawSignatureBoxes();
+}
+
+function onResizeMove(e) {
+    if (!isResizing || !activeBox) return;
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var minW = 40, minH = 30;
+    var newEndX = Math.max(activeBox.startX + minW, x);
+    var newEndY = Math.max(activeBox.startY + minH, y);
+    newEndX = Math.min(markCanvas.width, newEndX);
+    newEndY = Math.min(markCanvas.height, newEndY);
+    activeBox.endX = newEndX;
+    activeBox.endY = newEndY;
+    redrawSignatureBoxes();
+}
+
+function onDragEnd(e) {
+    isDragging = false;
+    activeBox = null;
+    window.removeEventListener('mousemove', onDragMove);
+    window.removeEventListener('mouseup', onDragEnd);
+}
+
+function onResizeEnd(e) {
+    isResizing = false;
+    activeBox = null;
+    window.removeEventListener('mousemove', onResizeMove);
+    window.removeEventListener('mouseup', onResizeEnd);
+}
+
+                        
                     } else {
                         $('#exampleModal').modal('hide');
                         Swal.fire("", response.message, "error");
@@ -387,7 +529,7 @@
     let markEventListener = null;
     let markEventListenerInsert = null;
 
-    function openPdf(url, id, status, type, is_number, number, position_id) {
+    function openPdf(url, id, status, type, is_check = '', number_id, position_id) {
         $('.btn-default').hide();
         document.getElementById('reject-book').disabled = true;
         document.getElementById('manager-sinature').disabled = false;
@@ -417,54 +559,7 @@
                 $('#reject-book').show();
             }
         });
-        $('#reject-book').click(function (e) {
-            e.preventDefault();
-            Swal.fire({
-                title: "",
-                text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
-                icon: "warning",
-                input: 'textarea',
-                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ22',
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                cancelButtonText: "ยกเลิก",
-                confirmButtonText: "ตกลง",
-                preConfirm: (note) => {
-                    if (!note) {
-                        Swal.showValidationMessage('กรุณากรอกเหตุผล');
-                    }
-                    return note;
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    var id = $('#id').val();
-                    var note = result.value;
-                    $.ajax({
-                        type: "post",
-                        url: "/book/reject",
-                        data: {
-                            id: id,
-                            note: note,
-                        },
-                        dataType: "json",
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        success: function (response) {
-                            if (response.status) {
-                                Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
-                            } else {
-                                Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error");
-                            }
-                        }
-                    });
-                }
-            });
-        });
+        
         resetMarking();
         removeMarkListener();
     }
@@ -599,15 +694,29 @@
         e.preventDefault();
         var id = $('#id').val();
         var position_id = $('#position_id').val();
-        var positionX = $('#positionX').val();
-        var positionY = $('#positionY').val();
+
         var positionPages = $('#positionPages').val();
         var pages = $('#page-select').find(":selected").val();
         var text = $('#modal-text').val();
         var checkedValues = $('input[type="checkbox"]:checked').map(function() {
             return $(this).val();
         }).get();
-        if (id != '' && positionX != '' && positionY != '') {
+        var textBox = signatureCoordinates ? signatureCoordinates.textBox : null;
+        var imageBox = signatureCoordinates ? signatureCoordinates.imageBox : null;
+        var bottomBox = signatureCoordinates ? signatureCoordinates.bottomBox : null;
+
+        var positionX = null;
+        var positionY = null;
+        var width = null;
+        var height = null;
+        if (textBox) {
+            positionX = textBox.startX;
+            positionY = textBox.startY;
+            width = textBox.endX - textBox.startX;
+            height = textBox.endY - textBox.startY;
+        }
+
+        if (id != '' && positionX !== null && positionY !== null) {
             Swal.fire({
                 title: "ยืนยันการลงลายเซ็น",
                 showCancelButton: true,
@@ -616,20 +725,39 @@
                 icon: 'question'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    var data = {
+                        id: id,
+                        positionX: positionX,
+                        positionY: positionY,
+                        pages: pages,
+                        positionPages: positionPages,
+                        status: 9,
+                        text: text,
+                        checkedValues: checkedValues,
+                        width: width,
+                        height: height,
+                        position_id: position_id
+                    };
+                    if (bottomBox) {
+                        data.bottomBox = {
+                            startX: bottomBox.startX,
+                            startY: bottomBox.startY,
+                            width: bottomBox.endX - bottomBox.startX,
+                            height: bottomBox.endY - bottomBox.startY
+                        };
+                    }
+                    if (imageBox && checkedValues.includes('4')) {
+                        data.imageBox = {
+                            startX: imageBox.startX,
+                            startY: imageBox.startY,
+                            width: imageBox.endX - imageBox.startX,
+                            height: imageBox.endY - imageBox.startY
+                        };
+                    }
                     $.ajax({
                         type: "post",
                         url: "/book/manager_stamp",
-                        data: {
-                            id: id,
-                            positionX: positionX,
-                            positionY: positionY,
-                            positionPages: positionPages,
-                            pages: pages,
-                            status: 9,
-                            text: text,
-                            checkedValues: checkedValues,
-                            position_id: position_id
-                        },
+                        data: data,
                         dataType: "json",
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -661,7 +789,7 @@
   success: function(response) {
     Swal.fire({ title: 'แทงเรื่อง', html: response, allowOutsideClick: false, focusConfirm: true,
       confirmButtonText: 'ตกลง', showCancelButton: true, cancelButtonText: `ยกเลิก`,
-                    preConfirm: () => {
+      preConfirm: () => {
                         var selectedCheckboxes = [];
                         var textCheckboxes = [];
                         $('input[name="flexCheckChecked[]"]:checked').each(function() {
@@ -754,6 +882,54 @@
         $('#insert-pages').click(function(e) {
             e.preventDefault();
             $('#insert_tab').show();
+        });
+        $('#reject-book').click(function (e) {
+            e.preventDefault();
+            Swal.fire({
+                title: "",
+                text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
+                icon: "warning",
+                input: 'textarea',
+                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ33',
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: "ยกเลิก",
+                confirmButtonText: "ตกลง",
+                preConfirm: (note) => {
+                    if (!note) {
+                        Swal.showValidationMessage('กรุณากรอกเหตุผล');
+                    }
+                    return note;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    var id = $('#id').val();
+                    var note = result.value;
+                    $.ajax({
+                        type: "post",
+                        url: "/book/reject",
+                        data: {
+                            id: id,
+                            note: note,
+                        },
+                        dataType: "json",
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        success: function (response) {
+                            if (response.status) {
+                                Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error");
+                            }
+                        }
+                    });
+                }
+            });
         });
 
         async function createAndRenderPDF() {
