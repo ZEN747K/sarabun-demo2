@@ -12,14 +12,17 @@
     var pageNumTalbe = 1;
 
     var imgData = null;
+// === Preload signature & globals for multi-box ===
 var signatureImg = new Image();
 var signatureImgLoaded = false;
 signatureImg.onload = function(){ signatureImgLoaded = true; };
 signatureImg.src = signature;
 
+// persistent coordinates for multi-boxes on main/insert canvases
 var signatureCoordinates = null;
 var signatureCoordinatesInsert = null;
 
+// always show meta (name/rank/date) regardless of checkboxes
 var ALWAYS_SHOW_META = true;
 
 
@@ -398,6 +401,73 @@ $('#modalForm').on('submit', function(e) {
                         resetMarking();
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
+
+// === initialize multi-box frames after confirm (show frames immediately) ===
+(function initMultiBoxAfterConfirm(){
+  try {
+    const mainCanvas = document.getElementById('mark-layer');
+    const insertCanvas = document.getElementById('mark-layer-insert');
+
+    // Build default state + handlers for main canvas
+    signatureCoordinates = buildDefaultState(mainCanvas, true, true);
+    const syncMain = (box)=>{
+      if (box && box.type === 'text') {
+        $('#positionX').val(Math.round(box.startX));
+        $('#positionY').val(Math.round(box.startY));
+        $('#positionPages').val(1);
+      }
+    };
+    setupMultiBoxHandlers(mainCanvas, signatureCoordinates, {
+      textProvider: ()=> $('#modal-text').val(),
+      getShowImage: ()=> $('input[type="checkbox"][value="4"]').is(':checked'),
+      signatureImgLoaded: signatureImgLoaded,
+      signatureImg: signatureImg,
+      onChange: syncMain
+    });
+    syncMain(signatureCoordinates.textBox);
+
+    // Insert canvas (if present)
+    if (insertCanvas) {
+      signatureCoordinatesInsert = buildDefaultState(insertCanvas, true, true);
+      const syncIns = (box)=>{
+        if (box && box.type === 'text') {
+          $('#positionX').val(Math.round(box.startX));
+          $('#positionY').val(Math.round(box.startY));
+          $('#positionPages').val(2);
+        }
+      };
+      setupMultiBoxHandlers(insertCanvas, signatureCoordinatesInsert, {
+        textProvider: ()=> $('#modal-text').val(),
+        getShowImage: ()=> $('input[type="checkbox"][value="4"]').is(':checked'),
+        signatureImgLoaded: signatureImgLoaded,
+        signatureImg: signatureImg,
+        onChange: syncIns
+      });
+    }
+
+    // live redraw on text/checkbox change
+    $(document).off('input.multibox change.multibox', '#modal-text, input[type="checkbox"]');
+    $(document).on('input.multibox change.multibox', '#modal-text, input[type="checkbox"]', function(){
+      drawMultiBoxes(mainCanvas, signatureCoordinates, {
+        text: $('#modal-text').val(),
+        signatureImgLoaded: signatureImgLoaded,
+        signatureImg: signatureImg,
+        showImage: $('input[type="checkbox"][value="4"]').is(':checked')
+      });
+      if (insertCanvas) {
+        drawMultiBoxes(insertCanvas, signatureCoordinatesInsert, {
+          text: $('#modal-text').val(),
+          signatureImgLoaded: signatureImgLoaded,
+          signatureImg: signatureImg,
+          showImage: $('input[type="checkbox"][value="4"]').is(':checked')
+        });
+      }
+    });
+  } catch(err) {
+    console.error('initMultiBoxAfterConfirm error:', err);
+  }
+})();
+
 
                         } else {
                         $('#exampleModal').modal('hide');
