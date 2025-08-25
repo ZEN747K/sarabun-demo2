@@ -12,6 +12,16 @@
     var pageNumTalbe = 1;
 
     var imgData = null;
+var signatureImg = new Image();
+var signatureImgLoaded = false;
+signatureImg.onload = function(){ signatureImgLoaded = true; };
+signatureImg.src = signature;
+
+var signatureCoordinates = null;
+var signatureCoordinatesInsert = null;
+
+var ALWAYS_SHOW_META = true;
+
 
     function pdf(url) {
         var pdfDoc = null,
@@ -211,7 +221,160 @@
             }
         }
 
-        $('#modalForm').on('submit', function(e) {
+        
+// === helpers: state + draw + handlers (multibox) ===
+function buildDefaultState(canvas, withBottomBox=true, withImageBox=true) {
+    const cw = canvas.width, ch = canvas.height;
+    const textW=220, textH=40, metaH=80, imgW=240, imgH=130, gap=10;
+    const startX = (cw - textW)/2;
+    const startY = (ch - (textH + (withBottomBox? gap+metaH : 0) + (withImageBox? gap+imgH : 0)))/2;
+    const state = { textBox: { startX:startX, startY:startY, endX:startX+textW, endY:startY+textH, type:'text' } };
+    let cursorY = startY + textH;
+    if (withBottomBox) {
+        state.bottomBox = { startX:startX, startY:cursorY+gap, endX:startX+textW, endY:cursorY+gap+metaH, type:'bottom' };
+        cursorY = state.bottomBox.endY;
+    }
+    if (withImageBox) {
+        state.imageBox  = { startX:startX-13, startY:cursorY+gap, endX:startX-13+imgW, endY:cursorY+gap+imgH, type:'image' };
+    }
+    return state;
+}
+
+function drawMultiBoxes(canvas, state, opts) {
+    const ctx = canvas.getContext('2d');
+    const {
+        text, checkedValues, signatureImgLoaded, signatureImg,
+        showImage = (checkedValues||[]).includes('4'),
+        fullName = `({{$users->fullname}})`,
+        rankText = `{{$permission_data->permission_name}}`,
+        dateText = `{{convertDateToThai(date("Y-m-d"))}}`
+    } = opts || {};
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const handle = 14;
+
+    // text box (blue)
+    if (state.textBox) {
+        const b = state.textBox, w=b.endX-b.startX, h=b.endY-b.startY;
+        ctx.save();
+        ctx.strokeStyle='blue'; ctx.lineWidth=.8; ctx.strokeRect(b.startX,b.startY,w,h);
+        ctx.fillStyle='#fff'; ctx.strokeStyle='#007bff'; ctx.lineWidth=2;
+        ctx.fillRect(b.endX-handle, b.endY-handle, handle, handle);
+        ctx.strokeRect(b.endX-handle, b.endY-handle, handle, handle);
+        const scale = Math.max(.5, Math.min(2.5, Math.min(w/220, h/40)));
+        ctx.font=(15*scale).toFixed(1)+'px Sarabun'; ctx.fillStyle='blue';
+        const lines = (text||'').split('\n'); const lh=20*scale;
+        for (let i=0;i<lines.length;i++){ const tw=ctx.measureText(lines[i]).width;
+            const cx=(b.startX+b.endX)/2 - tw/2; ctx.fillText(lines[i], cx, b.startY+25*scale+i*lh); }
+        ctx.restore();
+    }
+
+    // bottom meta (purple) - always show if ALWAYS_SHOW_META
+    if (state.bottomBox) {
+        const b = state.bottomBox, w=b.endX-b.startX, h=b.endY-b.startY;
+        ctx.save();
+        ctx.strokeStyle='purple'; ctx.lineWidth=.8; ctx.strokeRect(b.startX,b.startY,w,h);
+        ctx.fillStyle='#fff'; ctx.strokeStyle='#6f42c1'; ctx.lineWidth=2;
+        ctx.fillRect(b.endX-handle, b.endY-handle, handle, handle);
+        ctx.strokeRect(b.endX-handle, b.endY-handle, handle, handle);
+        const metaScale = Math.max(.5, Math.min(2.5, Math.min(w/220, h/80)));
+        ctx.font=(15*metaScale).toFixed(1)+'px Sarabun'; ctx.fillStyle='blue';
+        const metaLines = ALWAYS_SHOW_META ? [fullName, rankText, dateText] : [];
+        const lh=20*metaScale;
+        metaLines.forEach((line,i)=>{ const tw=ctx.measureText(line).width;
+            const cx=(b.startX+b.endX)/2 - tw/2; ctx.fillText(line, cx, b.startY + 25*metaScale + i*lh); });
+        ctx.restore();
+    }
+
+    // image box (green)
+    if (state.imageBox) {
+        const b = state.imageBox, w=b.endX-b.startX, h=b.endY-b.startY;
+        if (showImage) {
+            ctx.save();
+            ctx.strokeStyle='green'; ctx.lineWidth=.8; ctx.strokeRect(b.startX,b.startY,w,h);
+            ctx.fillStyle='#fff'; ctx.strokeStyle='#28a745'; ctx.lineWidth=2;
+            ctx.fillRect(b.endX-handle, b.endY-handle, handle, handle);
+            ctx.strokeRect(b.endX-handle, b.endY-handle, handle, handle);
+            if (signatureImgLoaded) ctx.drawImage(signatureImg, b.startX, b.startY, w, h);
+            ctx.restore();
+        } else {
+            ctx.save(); ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(0,128,0,.5)'; ctx.lineWidth=.8;
+            ctx.strokeRect(b.startX,b.startY,w,h); ctx.restore();
+        }
+    }
+}
+
+function setupMultiBoxHandlers(canvas, state, options) {
+    const { onChange, getShowImage, textProvider, signatureImgLoaded, signatureImg } = options || {};
+    let isDragging=false, isResizing=false, activeBox=null, dx=0, dy=0;
+    const handle=14;
+
+    function hitResize(x,y,b){ return x>=b.endX-handle && x<=b.endX && y>=b.endY-handle && y<=b.endY; }
+    function hitBox(x,y,b){ return x>=b.startX && x<=b.endX && y>=b.startY && y<=b.endY; }
+    function pick(x,y){
+        if (state.bottomBox && hitBox(x,y,state.bottomBox)) return state.bottomBox;
+        if (state.imageBox  && hitBox(x,y,state.imageBox))  return state.imageBox;
+        if (state.textBox   && hitBox(x,y,state.textBox))   return state.textBox;
+        return null;
+    }
+
+    canvas.addEventListener('mousemove', (e)=>{
+        const r=canvas.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+        const showImg=!!getShowImage?.();
+        if ((state.textBox && hitResize(x,y,state.textBox)) ||
+            (state.bottomBox && hitResize(x,y,state.bottomBox)) ||
+            (showImg && state.imageBox && hitResize(x,y,state.imageBox))) {
+            canvas.style.cursor='se-resize';
+        } else if (pick(x,y)) canvas.style.cursor='move';
+        else canvas.style.cursor='default';
+    });
+
+    canvas.onmousedown=(e)=>{
+        const r=canvas.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+        const showImg=!!getShowImage?.();
+        const candidates=[state.textBox, state.bottomBox, showImg? state.imageBox:null].filter(Boolean);
+        for(const b of candidates){
+            if (hitResize(x,y,b)){ activeBox=b; isResizing=true; window.addEventListener('mousemove', onResize); window.addEventListener('mouseup', onUp); return; }
+        }
+        const b=pick(x,y);
+        if (b){ activeBox=b; isDragging=true; dx=x-b.startX; dy=y-b.startY; window.addEventListener('mousemove', onDrag); window.addEventListener('mouseup', onUp); }
+    };
+
+    function onDrag(e){
+        if (!isDragging || !activeBox) return;
+        const r=canvas.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+        const w=activeBox.endX-activeBox.startX, h=activeBox.endY-activeBox.startY;
+        let sx=Math.max(0, Math.min(canvas.width-w, x-dx));
+        let sy=Math.max(0, Math.min(canvas.height-h, y-dy));
+        activeBox.startX=sx; activeBox.startY=sy; activeBox.endX=sx+w; activeBox.endY=sy+h;
+        onChange?.(activeBox);
+        drawMultiBoxes(canvas, state, {
+            text: textProvider?.(), signatureImgLoaded, signatureImg, showImage: getShowImage?.()
+        });
+    }
+    function onResize(e){
+        if (!isResizing || !activeBox) return;
+        const r=canvas.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+        const minW=40,minH=30;
+        activeBox.endX=Math.min(canvas.width,  Math.max(activeBox.startX+minW, x));
+        activeBox.endY=Math.min(canvas.height, Math.max(activeBox.startY+minH, y));
+        onChange?.(activeBox);
+        drawMultiBoxes(canvas, state, {
+            text: textProvider?.(), signatureImgLoaded, signatureImg, showImage: getShowImage?.()
+        });
+    }
+    function onUp(){ isDragging=false; isResizing=false; activeBox=null;
+        window.removeEventListener('mousemove', onDrag);
+        window.removeEventListener('mousemove', onResize);
+        window.removeEventListener('mouseup', onUp);
+    }
+
+    // initial draw
+    drawMultiBoxes(canvas, state, {
+        text: textProvider?.(), signatureImgLoaded, signatureImg, showImage: getShowImage?.()
+    });
+}
+$('#modalForm').on('submit', function(e) {
             e.preventDefault();
             var formData = new FormData(this);
             $('#exampleModal').modal('hide');
@@ -236,217 +399,7 @@
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
 
-                        
-// === Drag & Resize selection (main canvas) ===
-document.getElementById('manager-sinature').disabled = true;
-document.getElementById('manager-save').disabled = false;
-
-var markCanvas = document.getElementById('mark-layer');
-var markCtx = markCanvas.getContext('2d');
-
-// Default box centered
-var defaultWidth = 220;
-var defaultHeight = 115;
-markCoordinates = {
-    startX: (markCanvas.width - defaultWidth) / 2,
-    startY: (markCanvas.height - defaultHeight) / 2,
-    endX: (markCanvas.width - defaultWidth) / 2 + defaultWidth,
-    endY: (markCanvas.height - defaultHeight) / 2 + defaultHeight
-};
-
-var isDragging = false;
-var isResizing = false;
-var dragOffsetX = 0;
-var dragOffsetY = 0;
-var resizeHandleSize = 10;
-
-function isOnResizeHandle(mouseX, mouseY) {
-    return (
-        mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
-        mouseY >= markCoordinates.endY - resizeHandleSize && mouseY <= markCoordinates.endY
-    );
-}
-
-function isInsideBox(mouseX, mouseY) {
-    return (
-        mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
-        mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
-    );
-}
-
-// draw rectangle with small cross like old drawMark
-function drawMark(sx, sy, ex, ey) {
-    var ctx = markCtx;
-    ctx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-    ctx.beginPath();
-    ctx.rect(sx, sy, ex - sx, ey - sy);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'blue';
-    ctx.stroke();
-    var crossSize = 10;
-    ctx.beginPath();
-    ctx.moveTo(ex - crossSize, sy + crossSize);
-    ctx.lineTo(ex, sy);
-    ctx.moveTo(ex, sy + crossSize);
-    ctx.lineTo(ex - crossSize, sy);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'red';
-    ctx.stroke();
-}
-
-markCanvas.addEventListener('mousemove', function (e) {
-    var rect = markCanvas.getBoundingClientRect();
-    var x = e.clientX - rect.left;
-    var y = e.clientY - rect.top;
-    if (isOnResizeHandle(x, y)) {
-        markCanvas.style.cursor = 'se-resize';
-    } else if (isInsideBox(x, y)) {
-        markCanvas.style.cursor = 'move';
-    } else {
-        markCanvas.style.cursor = 'default';
-    }
-});
-
-markCanvas.onmousedown = function (e) {
-    var rect = markCanvas.getBoundingClientRect();
-    var x = e.clientX - rect.left;
-    var y = e.clientY - rect.top;
-    if (isOnResizeHandle(x, y)) {
-        isResizing = true;
-    } else if (isInsideBox(x, y)) {
-        isDragging = true;
-        dragOffsetX = x - markCoordinates.startX;
-        dragOffsetY = y - markCoordinates.startY;
-    }
-};
-
-markCanvas.onmousemove = function (e) {
-    if (!isDragging && !isResizing) return;
-    var rect = markCanvas.getBoundingClientRect();
-    var x = e.clientX - rect.left;
-    var y = e.clientY - rect.top;
-    if (isDragging) {
-        var w = markCoordinates.endX - markCoordinates.startX;
-        var h = markCoordinates.endY - markCoordinates.startY;
-        var nsx = x - dragOffsetX;
-        var nsy = y - dragOffsetY;
-        markCoordinates.startX = Math.max(0, Math.min(nsx, markCanvas.width - w));
-        markCoordinates.startY = Math.max(0, Math.min(nsy, markCanvas.height - h));
-        markCoordinates.endX = markCoordinates.startX + w;
-        markCoordinates.endY = markCoordinates.startY + h;
-    } else if (isResizing) {
-        markCoordinates.endX = Math.max(markCoordinates.startX + 40, Math.min(x, markCanvas.width));
-        markCoordinates.endY = Math.max(markCoordinates.startY + 40, Math.min(y, markCanvas.height));
-    }
-
-    drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
-
-    var text = $('#modal-text').val();
-    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-    var lineBreakCount = (text.match(/\n/g) || []).length;
-    drawMarkSignature(markCoordinates.startX - 40, markCoordinates.startY + (20 * lineBreakCount), markCoordinates.endX, markCoordinates.endY, checkedValues);
-    drawTextHeaderSignature('15px Sarabun', markCoordinates.startX, markCoordinates.startY, text);
-
-    $('#positionX').val(Math.round(markCoordinates.startX));
-    $('#positionY').val(Math.round(markCoordinates.startY));
-    $('#positionPages').val(1);
-};
-
-markCanvas.onmouseup = function () { isDragging = false; isResizing = false; };
-markCanvas.onmouseleave = function () { isDragging = false; isResizing = false; };
-
-drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
-$('#positionX').val(Math.round(markCoordinates.startX));
-$('#positionY').val(Math.round(markCoordinates.startY));
-$('#positionPages').val(1);
-
-
-                        
-// === Drag & Resize selection (insert canvas) ===
-document.getElementById('manager-sinature').disabled = true;
-document.getElementById('manager-save').disabled = false;
-
-var insertCanvas = document.getElementById('mark-layer-insert');
-if (insertCanvas) {
-    var insertCtx = insertCanvas.getContext('2d');
-    var defaultWidthI = 220;
-    var defaultHeightI = 115;
-    var insertCoordinates = {
-        startX: (insertCanvas.width - defaultWidthI) / 2,
-        startY: (insertCanvas.height - defaultHeightI) / 2,
-        endX: (insertCanvas.width - defaultWidthI) / 2 + defaultWidthI,
-        endY: (insertCanvas.height - defaultHeightI) / 2 + defaultHeightI
-    };
-    var isDraggingI = false;
-    var isResizingI = false;
-    var dragOffsetXI = 0;
-    var dragOffsetYI = 0;
-    var handleI = 10;
-
-    function isOnResizeHandleI(x, y) {
-        return x >= insertCoordinates.endX - handleI && x <= insertCoordinates.endX &&
-               y >= insertCoordinates.endY - handleI && y <= insertCoordinates.endY;
-    }
-    function isInsideBoxI(x, y) {
-        return x >= insertCoordinates.startX && x <= insertCoordinates.endX &&
-               y >= insertCoordinates.startY && y <= insertCoordinates.endY;
-    }
-    function drawMarkI(sx, sy, ex, ey) {
-        insertCtx.clearRect(0, 0, insertCanvas.width, insertCanvas.height);
-        insertCtx.beginPath(); insertCtx.rect(sx, sy, ex - sx, ey - sy);
-        insertCtx.lineWidth = 1; insertCtx.strokeStyle = 'blue'; insertCtx.stroke();
-        var cross = 10; insertCtx.beginPath();
-        insertCtx.moveTo(ex - cross, sy + cross); insertCtx.lineTo(ex, sy);
-        insertCtx.moveTo(ex, sy + cross); insertCtx.lineTo(ex - cross, sy);
-        insertCtx.lineWidth = 2; insertCtx.strokeStyle = 'red'; insertCtx.stroke();
-    }
-
-    insertCanvas.addEventListener('mousemove', function (e) {
-        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-        if (isOnResizeHandleI(x, y)) insertCanvas.style.cursor = 'se-resize';
-        else if (isInsideBoxI(x, y)) insertCanvas.style.cursor = 'move';
-        else insertCanvas.style.cursor = 'default';
-    });
-    insertCanvas.onmousedown = function (e) {
-        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-        if (isOnResizeHandleI(x, y)) isResizingI = true;
-        else if (isInsideBoxI(x, y)) { isDraggingI = true; dragOffsetXI = x - insertCoordinates.startX; dragOffsetYI = y - insertCoordinates.startY; }
-    };
-    insertCanvas.onmousemove = function (e) {
-        if (!isDraggingI && !isResizingI) return;
-        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-        if (isDraggingI) {
-            var w = insertCoordinates.endX - insertCoordinates.startX;
-            var h = insertCoordinates.endY - insertCoordinates.startY;
-            var nsx = x - dragOffsetXI, nsy = y - dragOffsetYI;
-            insertCoordinates.startX = Math.max(0, Math.min(nsx, insertCanvas.width - w));
-            insertCoordinates.startY = Math.max(0, Math.min(nsy, insertCanvas.height - h));
-            insertCoordinates.endX = insertCoordinates.startX + w;
-            insertCoordinates.endY = insertCoordinates.startY + h;
-        } else if (isResizingI) {
-            insertCoordinates.endX = Math.max(insertCoordinates.startX + 40, Math.min(x, insertCanvas.width));
-            insertCoordinates.endY = Math.max(insertCoordinates.startY + 40, Math.min(y, insertCanvas.height));
-        }
-
-        drawMarkI(insertCoordinates.startX, insertCoordinates.startY, insertCoordinates.endX, insertCoordinates.endY);
-
-        var text = $('#modal-text').val();
-        var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-        var lineBreakCount = (text.match(/\n/g) || []).length;
-        drawMarkSignatureInsert(insertCoordinates.startX - 40, insertCoordinates.startY + (20 * lineBreakCount), insertCoordinates.endX, insertCoordinates.endY, checkedValues);
-        drawTextHeaderSignatureInsert('15px Sarabun', insertCoordinates.startX, insertCoordinates.startY, text);
-
-        $('#positionX').val(Math.round(insertCoordinates.startX));
-        $('#positionY').val(Math.round(insertCoordinates.startY));
-        $('#positionPages').val(2);
-    };
-    insertCanvas.onmouseup = function () { isDraggingI = false; isResizingI = false; };
-    insertCanvas.onmouseleave = function () { isDraggingI = false; isResizingI = false; };
-
-    drawMarkI(insertCoordinates.startX, insertCoordinates.startY, insertCoordinates.endX, insertCoordinates.endY);
-}
-
-                    } else {
+                        } else {
                         $('#exampleModal').modal('hide');
                         Swal.fire("", response.message, "error");
                     }
