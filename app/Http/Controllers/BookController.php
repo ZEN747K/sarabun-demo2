@@ -219,7 +219,7 @@ class BookController extends Controller
         $book_count = $book_count;
         $data['totalPages'] = (int)ceil($book_count / 5);
         $data['book'] = $book;
-        $item = Position::where('parent_id')->get();
+        $data['item'] = Position::all()->pluck('position_name', 'id');
         $data['itemParent'] = [];
         if (auth()->user()->position_id) {
             $item_parent_id = Position::where('parent_id', auth()->user()->position_id)->get();
@@ -227,9 +227,7 @@ class BookController extends Controller
                 $data['itemParent'][$rs->id] = $rs->position_name;
             }
         }
-        foreach ($item as $rs) {
-            $data['item'][$rs->id] = $rs->position_name;
-        }
+        
         return view('book.show', $data);
     }
 
