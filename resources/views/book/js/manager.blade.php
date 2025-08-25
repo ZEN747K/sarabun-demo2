@@ -921,9 +921,7 @@ function buildSignaturePayload(opts){
 
         createAndRenderPDF();
     });
-</script>
-@endsection
-$('#signature-save').click(function(e){
+    $('#signature-save').click(function(e){
   e.preventDefault();
   var id = $('#id').val();
   if(!id){ return Swal.fire('', 'ไม่พบรหัสเอกสาร', 'info'); }
@@ -940,3 +938,6 @@ $('#signature-save').click(function(e){
      });
    });
 });
+
+</script>
+@endsection
