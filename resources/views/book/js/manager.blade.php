@@ -111,7 +111,7 @@
         document.getElementById('prev').addEventListener('click', onPrevPage);
 
 
-        // let markEventListener = null;d
+        // let markEventListener = null;
         function countLineBreaks(text) {
             var lines = text.split('\n');
             return lines.length - 1;
