@@ -25,38 +25,41 @@ Route::get('/login/logout', [LoginController::class, 'logout'])->name('login.log
 
 // --------------------------- Protected (ต้องผ่าน middleware auth.admin) ---------------------------
 Route::middleware('auth.admin')->group(function () {
-
+    
+    Route::post('/book/_checkbox_send', [BookController::class, 'checkbox_send'])
+    ->name('book._checkbox_send_legacy');
     // --------------------------- หนังสือเข้า (Book) ---------------------------
-    Route::get('/book', [BookController::class, 'index'])->name('book.index');                               // หน้ารับหนังสือ (แอดมิน)
-    Route::get('/book/getEmail', [BookController::class, 'getEmail'])->name('book.getEmail');                // ดึงอีเมล/ไฟล์แนบจาก IMAP
-    Route::get('/book/show', [BookController::class, 'show'])->name('book.show');                            // หน้าแสดงรายการหนังสือตามสิทธิ์
-    Route::post('/book/bookType', [BookController::class, 'bookType'])->name('book.bookType');               // เปลี่ยนประเภทเพื่อรันเลขรับ
-    Route::post('/book/save', [BookController::class, 'save'])->name('book.save');                           // บันทึกนำเข้าเอกสาร
-    Route::post('/book/dataListSearch', [BookController::class, 'dataListSearch'])->name('book.dataListSearch'); // ค้นหารายการ (Ajax)
-    Route::post('/book/dataList', [BookController::class, 'dataList'])->name('book.dataList');               // ดึงรายการแบ่งหน้า (Ajax)
+    Route::get('/book', [BookController::class, 'index'])->name('book.index');
+    Route::get('/book/getEmail', [BookController::class, 'getEmail'])->name('book.getEmail');
+    Route::get('/book/show', [BookController::class, 'show'])->name('book.show');
+    Route::post('/book/bookType', [BookController::class, 'bookType'])->name('book.bookType');
+    Route::post('/book/save', [BookController::class, 'save'])->name('book.save');
+    Route::post('/book/dataListSearch', [BookController::class, 'dataListSearch'])->name('book.dataListSearch');
+    Route::post('/book/dataList', [BookController::class, 'dataList'])->name('book.dataList');
 
-    Route::post('/book/save_stamp', [BookController::class, 'save_stamp'])->name('book.save_stamp');         // ประทับรับเข้า (ส่วนกลาง)
-    Route::post('/book/send_to_admin', [BookController::class, 'send_to_admin'])->name('book.send_to_admin');// แทงเรื่องไปหน่วยงาน/ตำแหน่งที่เลือก
-    Route::post('/book/send_to_adminParent', [BookController::class, 'send_to_adminParent'])->name('book.send_to_adminParent'); // แทงเรื่องไปผู้บังคับบัญชา
+    Route::post('/book/save_stamp', [BookController::class, 'save_stamp'])->name('book.save_stamp');
+    Route::post('/book/send_to_admin', [BookController::class, 'send_to_admin'])->name('book.send_to_admin');
+    Route::post('/book/send_to_adminParent', [BookController::class, 'send_to_adminParent'])->name('book.send_to_adminParent');
 
-    Route::post('/book/admin_stamp', [BookController::class, 'admin_stamp'])->name('book.admin_stamp');      // หน่วยงานประทับรับ
-    Route::post('/book/admin_stampParent', [BookController::class, 'admin_stampParent'])->name('book.admin_stampParent'); // (มีใน route เดิม)
+    Route::post('/book/admin_stamp', [BookController::class, 'admin_stamp'])->name('book.admin_stamp');
+    Route::post('/book/admin_stampParent', [BookController::class, 'admin_stampParent'])->name('book.admin_stampParent');
 
-    Route::post('/book/checkbox_send', [BookController::class, 'checkbox_send'])->name('book.checkbox_send');        // โหลดผู้รับในสายบังคับบัญชา (เช็คบ็อกซ์)
-    Route::post('/book/_checkbox_send', [BookController::class, '_checkbox_send'])->name('book._checkbox_send');     // โหลดผู้รับทุกตำแหน่ง (เช็คบ็อกซ์)
+    Route::post('/book/checkbox_send', [BookController::class, 'checkbox_send'])->name('book.checkbox_send');
 
-    Route::post('/book/send_to_save', [BookController::class, 'send_to_save'])->name('book.send_to_save');   // บันทึกผลการแทงเรื่อง (ไปบุคคล)
-    Route::post('/book/confirm_signature', [BookController::class, 'confirm_signature'])->name('book.confirm_signature'); // ยืนยันรหัสผ่านสำหรับลายเซ็น
-    Route::post('/book/signature_stamp', [BookController::class, 'signature_stamp'])->name('book.signature_stamp');     // ประทับลายเซ็น/ความเห็น
-    Route::post('/book/manager_stamp', [BookController::class, 'manager_stamp'])->name('book.manager_stamp');           // ผู้บริหารเซ็น
-    Route::post('/book/uploadPdf', [BookController::class, 'uploadPdf'])->name('bookSender.uploadPdf');       // อัพโหลดไฟล์ PDF แทน
-    Route::post('/book/number_save', [BookController::class, 'number_save'])->name('bookSender.number_save'); // ประทับเลขที่จอง
-    Route::post('/book/directory_save', [BookController::class, 'directory_save'])->name('bookSender.directory_save'); // จัดเก็บเข้าแฟ้ม/ไดเรกทอรี
-    Route::post('/book/reject', [BookController::class, 'reject'])->name('book.reject');                     // ปฏิเสธหนังสือ/ตีกลับ
-    Route::post('/book/edit_stamp', [BookController::class, 'edit_stamp'])->name('book.edit_stamp');         // แก้ไขตำแหน่ง/เวลาในตรารับ
-    Route::get('/book/stamp_position/{id}', [BookController::class, 'get_stamp_position'])->name('book.stamp_position'); // ดึงพิกัดตรารับล่าสุด
-    Route::post('/book/check_admin', [BookController::class, 'check_admin'])->name('book.check_admin');       // ตรวจสิทธิ์แอดมินด้วยรหัสผ่าน
-    Route::get('/book/created_position/{id}', [BookController::class, 'created_position'])->name('book.created_position'); // หาตำแหน่งของผู้ที่สร้างหนังสือ
+    Route::post('/book/send_to_save', [BookController::class, 'send_to_save'])->name('book.send_to_save');
+    Route::post('/book/confirm_signature', [BookController::class, 'confirm_signature'])->name('book.confirm_signature');
+    Route::post('/book/signature_stamp', [BookController::class, 'signature_stamp'])->name('book.signature_stamp');
+    Route::post('/book/manager_stamp', [BookController::class, 'manager_stamp'])->name('book.manager_stamp');
+
+    Route::post('/book/uploadPdf', [BookController::class, 'uploadPdf'])->name('book.uploadPdf');
+    Route::post('/book/number_save', [BookController::class, 'number_save'])->name('book.number_save');
+    Route::post('/book/directory_save', [BookController::class, 'directory_save'])->name('book.directory_save');
+
+    Route::post('/book/reject', [BookController::class, 'reject'])->name('book.reject');
+    Route::post('/book/edit_stamp', [BookController::class, 'edit_stamp'])->name('book.edit_stamp');
+    Route::get('/book/stamp_position/{id}', [BookController::class, 'get_stamp_position'])->name('book.stamp_position');
+    Route::post('/book/check_admin', [BookController::class, 'check_admin'])->name('book.check_admin');
+    Route::get('/book/created_position/{id}', [BookController::class, 'created_position'])->name('book.created_position');
 
     // --------------------------- จัดการสมาชิก (Users) ---------------------------
     Route::get('/users/listUsers', [UsersController::class, 'listUsers'])->name('users.listUsers');           // หน้า “ข้อมูลสมาชิก”

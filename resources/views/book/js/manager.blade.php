@@ -604,23 +604,14 @@
 
     $('#manager-send').click(function(e) {
         e.preventDefault();
-        $.ajax({
-            type: "post",
-            url: "/book/_checkbox_send",
-            dataType: "json",
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            success: function(response) {
-                Swal.fire({
-                    title: 'แทงเรื่อง',
-                    html: response,
-                    allowOutsideClick: false,
-                    focusConfirm: true,
-                    confirmButtonText: 'ตกลง',
-                    showCancelButton: true,
-                    cancelButtonText: `ยกเลิก`,
-                    preConfirm: () => {
+       $.ajax({
+  type: "post",
+  url: "{{ route('book.checkbox_send') }}",
+  headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+  success: function(response) {
+    Swal.fire({ title: 'แทงเรื่อง', html: response, allowOutsideClick: false, focusConfirm: true,
+      confirmButtonText: 'ตกลง', showCancelButton: true, cancelButtonText: `ยกเลิก`,
+      preConfirm: () => {
                         var selectedCheckboxes = [];
                         var textCheckboxes = [];
                         $('input[name="flexCheckChecked[]"]:checked').each(function() {
