@@ -51,6 +51,9 @@ var ALWAYS_SHOW_META = true;
                 let viewport = page.getViewport({
                     scale: scale
                 });
+                // expose scale/viewport for save conversion if backend needs points
+                window.__pdfScale = scale;
+                window.__pdfViewport = {width: viewport.width, height: viewport.height};
                 pdfCanvas.height = viewport.height;
                 pdfCanvas.width = viewport.width;
                 markCanvas.height = viewport.height;
@@ -402,6 +405,55 @@ $('#modalForm').on('submit', function(e) {
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
 
+
+// Build payload for saving multi-box signature (text + bottom + image)
+function buildSignaturePayload(opts){
+    const id = $('#id').val();
+    const pages = $('#page-select').find(":selected").val();
+    const positionPages = $('#positionPages').val() || 1;
+    const text = $('#modal-text').val() || '';
+    let checkedValues = $('input[type="checkbox"]:checked').map(function(){ return $(this).val(); }).get() || [];
+
+    // If we always show meta, make sure 1,2,3 are included so backend renders too
+    if (ALWAYS_SHOW_META) {
+        ['1','2','3'].forEach(v=>{ if(!checkedValues.includes(v)) checkedValues.push(v); });
+    }
+
+    const s = (opts && opts.state) || window.signatureCoordinates;
+    const boxData = {};
+    if (s?.textBox)   boxData.textBox   = { startX: s.textBox.startX,   startY: s.textBox.startY,   width: s.textBox.endX - s.textBox.startX,   height: s.textBox.endY - s.textBox.startY };
+    if (s?.bottomBox) boxData.bottomBox = { startX: s.bottomBox.startX, startY: s.bottomBox.startY, width: s.bottomBox.endX - s.bottomBox.startX, height: s.bottomBox.endY - s.bottomBox.startY };
+    if (s?.imageBox)  boxData.imageBox  = { startX: s.imageBox.startX,  startY: s.imageBox.startY,  width: s.imageBox.endX - s.imageBox.startX,  height: s.imageBox.endY - s.imageBox.startY };
+
+    // include scale hints
+    const payload = {
+        id, pages, positionPages,
+        text,
+        'checkedValues[]': checkedValues, // jQuery traditional:true will keep array form
+        includeMeta: ALWAYS_SHOW_META ? 1 : 0,
+        canvasWidth: (window.__pdfViewport && window.__pdfViewport.width)  || $('#mark-layer').get(0)?.width || null,
+        canvasHeight:(window.__pdfViewport && window.__pdfViewport.height) || $('#mark-layer').get(0)?.height || null,
+        scale: window.__pdfScale || 1,
+        // legacy top-left for compatibility (anchor at textBox if present)
+        positionX: s?.textBox ? s.textBox.startX : ($('#positionX').val() || 0),
+        positionY: s?.textBox ? s.textBox.startY : ($('#positionY').val() || 0),
+        width:  s?.textBox ? (s.textBox.endX - s.textBox.startX) : null,
+        height: s?.textBox ? (s.textBox.endY - s.textBox.startY) : null
+    };
+
+    // also send explicit names for server variants
+    if (boxData.textBox)   payload.textBox   = boxData.textBox;
+    if (boxData.bottomBox) payload.bottomBox = boxData.bottomBox;
+    if (boxData.imageBox)  {
+        payload.imageBox  = boxData.imageBox;
+        payload.imageWidth  = boxData.imageBox.width;
+        payload.imageHeight = boxData.imageBox.height;
+        // ratio relative to original default
+        payload.imageScaleX = boxData.imageBox.width  / 240.0;
+        payload.imageScaleY = boxData.imageBox.height / 130.0;
+    }
+    return payload;
+}
 // === initialize multi-box frames after confirm (show frames immediately) ===
 (function initMultiBoxAfterConfirm(){
   try {
@@ -664,20 +716,12 @@ $('#modalForm').on('submit', function(e) {
                     $.ajax({
                         type: "post",
                         url: "/book/manager_stamp",
-                        data: {
-                            id: id,
-                            positionX: positionX,
-                            positionY: positionY,
-                            pages: pages,
-                            positionPages: positionPages,
-                            status: 7,
-                            text: text,
-                            checkedValues: checkedValues
-                        },
+                        data: (function(){ var s=window.signatureCoordinates; var extra={}; if(s&&s.textBox){ extra.width = s.textBox.endX - s.textBox.startX; extra.height = s.textBox.endY - s.textBox.startY; } return { id:id, positionX:positionX, positionY:positionY, pages:pages, positionPages:positionPages, status:7, text:text, 'checkedValues[]':checkedValues, width: extra.width||undefined, height: extra.height||undefined, scale: window.__pdfScale||1, canvasWidth: (window.__pdfViewport&&window.__pdfViewport.width)||null, canvasHeight:(window.__pdfViewport&&window.__pdfViewport.height)||null }; })(),
                         dataType: "json",
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
+                        traditional: true,
                         success: function(response) {
                             if (response.status) {
                                 Swal.fire("", "บันทึกลายเซ็นเรียบร้อยแล้ว", "success");
@@ -831,6 +875,7 @@ $('#modalForm').on('submit', function(e) {
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
+                        traditional: true,
                         success: function (response) {
                             if (response.status) {
                                 Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
@@ -878,3 +923,20 @@ $('#modalForm').on('submit', function(e) {
     });
 </script>
 @endsection
+$('#signature-save').click(function(e){
+  e.preventDefault();
+  var id = $('#id').val();
+  if(!id){ return Swal.fire('', 'ไม่พบรหัสเอกสาร', 'info'); }
+  Swal.fire({title:'ยืนยันการลงเกษียณหนังสือ', showCancelButton:true, icon:'question', confirmButtonText:'ตกลง', cancelButtonText:'ยกเลิก'})
+   .then((r)=>{
+     if(!r.isConfirmed) return;
+     $.ajax({
+       type:'post', url:'/book/signature_stamp',
+       data: buildSignaturePayload({state: window.signatureCoordinates}),
+       dataType:'json', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}, traditional:true
+     }).done(function(resp){
+       if(resp.status){ Swal.fire('', 'ลงบันทึกเกษียณหนังสือเรียบร้อย', 'success'); setTimeout(()=>location.reload(), 1200); }
+       else { Swal.fire('', resp.message || 'บันทึกไม่สำเร็จ', 'error'); }
+     });
+   });
+});
