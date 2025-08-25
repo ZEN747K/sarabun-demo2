@@ -236,145 +236,216 @@
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
 
-                        markEventListener = function(e) {
-                            var markCanvas = document.getElementById('mark-layer');
-                            var markCtx = markCanvas.getContext('2d');
-                            var rect = markCanvas.getBoundingClientRect();
-                            var startX = (e.clientX - rect.left);
-                            var startY = (e.clientY - rect.top);
+                        
+// === Drag & Resize selection (main canvas) ===
+document.getElementById('manager-sinature').disabled = true;
+document.getElementById('manager-save').disabled = false;
 
-                            var endX = startX + 230;
-                            var endY = startY + 115;
+var markCanvas = document.getElementById('mark-layer');
+var markCtx = markCanvas.getContext('2d');
 
-                            markCoordinates = {
-                                startX,
-                                startY,
-                                endX,
-                                endY
-                            };
-                            $('#positionX').val(startX);
-                            $('#positionY').val(startY);
-                            $('#positionPages').val(1);
+// Default box centered
+var defaultWidth = 220;
+var defaultHeight = 115;
+markCoordinates = {
+    startX: (markCanvas.width - defaultWidth) / 2,
+    startY: (markCanvas.height - defaultHeight) / 2,
+    endX: (markCanvas.width - defaultWidth) / 2 + defaultWidth,
+    endY: (markCanvas.height - defaultHeight) / 2 + defaultHeight
+};
 
-                            var text = $('#modal-text').val();
-                            var lineBreakCount = countLineBreaks(text);
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function() {
-                                return $(this).val();
-                            }).get();
-                            drawMarkSignature(startX - 40, startY + (20 * lineBreakCount), endX, endY, checkedValues);
-                            drawTextHeaderSignature('15px Sarabun', startX, startY, text);
+var isDragging = false;
+var isResizing = false;
+var dragOffsetX = 0;
+var dragOffsetY = 0;
+var resizeHandleSize = 10;
 
-                            var i = 0;
-                            var checkbox_text = '';
-                            var checkbox_x = 0;
-                            var plus_y = 20;
-                            checkedValues.forEach(element => {
-                                if (element == 4) {
-                                    plus_y = 160;
-                                }
-                            });
+function isOnResizeHandle(mouseX, mouseY) {
+    return (
+        mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
+        mouseY >= markCoordinates.endY - resizeHandleSize && mouseY <= markCoordinates.endY
+    );
+}
 
-                            checkedValues.forEach(element => {
-                                switch (element) {
-                                    case '1':
-                                        checkbox_text = `({{$users->fullname}})`;
-                                        break;
-                                    case '2':
-                                        checkbox_text = `{{$permission_data->permission_name}}`;
-                                        break;
-                                    case '3':
-                                        checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
-                                        break;
-                                }
-                                var lines = checkbox_text.split('\n');
-                                if (element != 4) {
-                                    drawTextHeaderSignature('15px Sarabun', startX, (startY + plus_y + (20 * lineBreakCount)) + (20 * i), checkbox_text);
-                                }
-                                if (lines.length > 1) {
-                                    var stop = 0;
-                                    lines.forEach(element => {
-                                        if (stop != 0) {
-                                            i++;
-                                        }
-                                        stop++;
-                                    });
-                                }
-                                i++;
-                            });
-                        };
+function isInsideBox(mouseX, mouseY) {
+    return (
+        mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
+        mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
+    );
+}
 
-                        var markCanvas = document.getElementById('mark-layer');
-                        markCanvas.addEventListener('click', markEventListener);
+// draw rectangle with small cross like old drawMark
+function drawMark(sx, sy, ex, ey) {
+    var ctx = markCtx;
+    ctx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+    ctx.beginPath();
+    ctx.rect(sx, sy, ex - sx, ey - sy);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'blue';
+    ctx.stroke();
+    var crossSize = 10;
+    ctx.beginPath();
+    ctx.moveTo(ex - crossSize, sy + crossSize);
+    ctx.lineTo(ex, sy);
+    ctx.moveTo(ex, sy + crossSize);
+    ctx.lineTo(ex - crossSize, sy);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'red';
+    ctx.stroke();
+}
 
-                        markEventListenerInsert = function(e) {
-                            var markCanvas = document.getElementById('mark-layer-insert');
-                            var markCtx = markCanvas.getContext('2d');
-                            var rect = markCanvas.getBoundingClientRect();
-                            var startX = (e.clientX - rect.left);
-                            var startY = (e.clientY - rect.top);
+markCanvas.addEventListener('mousemove', function (e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    if (isOnResizeHandle(x, y)) {
+        markCanvas.style.cursor = 'se-resize';
+    } else if (isInsideBox(x, y)) {
+        markCanvas.style.cursor = 'move';
+    } else {
+        markCanvas.style.cursor = 'default';
+    }
+});
 
-                            var endX = startX + 230;
-                            var endY = startY + 115;
+markCanvas.onmousedown = function (e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    if (isOnResizeHandle(x, y)) {
+        isResizing = true;
+    } else if (isInsideBox(x, y)) {
+        isDragging = true;
+        dragOffsetX = x - markCoordinates.startX;
+        dragOffsetY = y - markCoordinates.startY;
+    }
+};
 
-                            markCoordinates = {
-                                startX,
-                                startY,
-                                endX,
-                                endY
-                            };
-                            $('#positionX').val(startX);
-                            $('#positionY').val(startY);
-                            $('#positionPages').val(2);
+markCanvas.onmousemove = function (e) {
+    if (!isDragging && !isResizing) return;
+    var rect = markCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    if (isDragging) {
+        var w = markCoordinates.endX - markCoordinates.startX;
+        var h = markCoordinates.endY - markCoordinates.startY;
+        var nsx = x - dragOffsetX;
+        var nsy = y - dragOffsetY;
+        markCoordinates.startX = Math.max(0, Math.min(nsx, markCanvas.width - w));
+        markCoordinates.startY = Math.max(0, Math.min(nsy, markCanvas.height - h));
+        markCoordinates.endX = markCoordinates.startX + w;
+        markCoordinates.endY = markCoordinates.startY + h;
+    } else if (isResizing) {
+        markCoordinates.endX = Math.max(markCoordinates.startX + 40, Math.min(x, markCanvas.width));
+        markCoordinates.endY = Math.max(markCoordinates.startY + 40, Math.min(y, markCanvas.height));
+    }
 
-                            var text = $('#modal-text').val();
-                            var lineBreakCount = countLineBreaks(text);
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function() {
-                                return $(this).val();
-                            }).get();
-                            drawMarkSignatureInsert(startX - 40, startY + (20 * lineBreakCount), endX, endY, checkedValues);
-                            drawTextHeaderSignatureInsert('15px Sarabun', startX, startY, text);
+    drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
 
-                            var i = 0;
-                            var checkbox_text = '';
-                            var checkbox_x = 0;
-                            var plus_y = 20;
-                            checkedValues.forEach(element => {
-                                if (element == 4) {
-                                    plus_y = 160;
-                                }
-                            });
+    var text = $('#modal-text').val();
+    var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
+    var lineBreakCount = (text.match(/\n/g) || []).length;
+    drawMarkSignature(markCoordinates.startX - 40, markCoordinates.startY + (20 * lineBreakCount), markCoordinates.endX, markCoordinates.endY, checkedValues);
+    drawTextHeaderSignature('15px Sarabun', markCoordinates.startX, markCoordinates.startY, text);
 
-                            checkedValues.forEach(element => {
-                                switch (element) {
-                                    case '1':
-                                        checkbox_text = `({{$users->fullname}})`;
-                                        break;
-                                    case '2':
-                                        checkbox_text = `{{$permission_data->permission_name}}`;
-                                        break;
-                                    case '3':
-                                        checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
-                                        break;
-                                }
-                                var lines = checkbox_text.split('\n');
-                                if (element != 4) {
-                                    drawTextHeaderSignatureInsert('15px Sarabun', startX, (startY + plus_y + (20 * lineBreakCount)) + (20 * i), checkbox_text);
-                                }
-                                if (lines.length > 1) {
-                                    var stop = 0;
-                                    lines.forEach(element => {
-                                        if (stop != 0) {
-                                            i++;
-                                        }
-                                        stop++;
-                                    });
-                                }
-                                i++;
-                            });
-                        };
+    $('#positionX').val(Math.round(markCoordinates.startX));
+    $('#positionY').val(Math.round(markCoordinates.startY));
+    $('#positionPages').val(1);
+};
 
-                        var markCanvas = document.getElementById('mark-layer-insert');
-                        markCanvas.addEventListener('click', markEventListenerInsert);
+markCanvas.onmouseup = function () { isDragging = false; isResizing = false; };
+markCanvas.onmouseleave = function () { isDragging = false; isResizing = false; };
+
+drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
+$('#positionX').val(Math.round(markCoordinates.startX));
+$('#positionY').val(Math.round(markCoordinates.startY));
+$('#positionPages').val(1);
+
+
+                        
+// === Drag & Resize selection (insert canvas) ===
+document.getElementById('manager-sinature').disabled = true;
+document.getElementById('manager-save').disabled = false;
+
+var insertCanvas = document.getElementById('mark-layer-insert');
+if (insertCanvas) {
+    var insertCtx = insertCanvas.getContext('2d');
+    var defaultWidthI = 220;
+    var defaultHeightI = 115;
+    var insertCoordinates = {
+        startX: (insertCanvas.width - defaultWidthI) / 2,
+        startY: (insertCanvas.height - defaultHeightI) / 2,
+        endX: (insertCanvas.width - defaultWidthI) / 2 + defaultWidthI,
+        endY: (insertCanvas.height - defaultHeightI) / 2 + defaultHeightI
+    };
+    var isDraggingI = false;
+    var isResizingI = false;
+    var dragOffsetXI = 0;
+    var dragOffsetYI = 0;
+    var handleI = 10;
+
+    function isOnResizeHandleI(x, y) {
+        return x >= insertCoordinates.endX - handleI && x <= insertCoordinates.endX &&
+               y >= insertCoordinates.endY - handleI && y <= insertCoordinates.endY;
+    }
+    function isInsideBoxI(x, y) {
+        return x >= insertCoordinates.startX && x <= insertCoordinates.endX &&
+               y >= insertCoordinates.startY && y <= insertCoordinates.endY;
+    }
+    function drawMarkI(sx, sy, ex, ey) {
+        insertCtx.clearRect(0, 0, insertCanvas.width, insertCanvas.height);
+        insertCtx.beginPath(); insertCtx.rect(sx, sy, ex - sx, ey - sy);
+        insertCtx.lineWidth = 1; insertCtx.strokeStyle = 'blue'; insertCtx.stroke();
+        var cross = 10; insertCtx.beginPath();
+        insertCtx.moveTo(ex - cross, sy + cross); insertCtx.lineTo(ex, sy);
+        insertCtx.moveTo(ex, sy + cross); insertCtx.lineTo(ex - cross, sy);
+        insertCtx.lineWidth = 2; insertCtx.strokeStyle = 'red'; insertCtx.stroke();
+    }
+
+    insertCanvas.addEventListener('mousemove', function (e) {
+        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+        if (isOnResizeHandleI(x, y)) insertCanvas.style.cursor = 'se-resize';
+        else if (isInsideBoxI(x, y)) insertCanvas.style.cursor = 'move';
+        else insertCanvas.style.cursor = 'default';
+    });
+    insertCanvas.onmousedown = function (e) {
+        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+        if (isOnResizeHandleI(x, y)) isResizingI = true;
+        else if (isInsideBoxI(x, y)) { isDraggingI = true; dragOffsetXI = x - insertCoordinates.startX; dragOffsetYI = y - insertCoordinates.startY; }
+    };
+    insertCanvas.onmousemove = function (e) {
+        if (!isDraggingI && !isResizingI) return;
+        var r = insertCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+        if (isDraggingI) {
+            var w = insertCoordinates.endX - insertCoordinates.startX;
+            var h = insertCoordinates.endY - insertCoordinates.startY;
+            var nsx = x - dragOffsetXI, nsy = y - dragOffsetYI;
+            insertCoordinates.startX = Math.max(0, Math.min(nsx, insertCanvas.width - w));
+            insertCoordinates.startY = Math.max(0, Math.min(nsy, insertCanvas.height - h));
+            insertCoordinates.endX = insertCoordinates.startX + w;
+            insertCoordinates.endY = insertCoordinates.startY + h;
+        } else if (isResizingI) {
+            insertCoordinates.endX = Math.max(insertCoordinates.startX + 40, Math.min(x, insertCanvas.width));
+            insertCoordinates.endY = Math.max(insertCoordinates.startY + 40, Math.min(y, insertCanvas.height));
+        }
+
+        drawMarkI(insertCoordinates.startX, insertCoordinates.startY, insertCoordinates.endX, insertCoordinates.endY);
+
+        var text = $('#modal-text').val();
+        var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
+        var lineBreakCount = (text.match(/\n/g) || []).length;
+        drawMarkSignatureInsert(insertCoordinates.startX - 40, insertCoordinates.startY + (20 * lineBreakCount), insertCoordinates.endX, insertCoordinates.endY, checkedValues);
+        drawTextHeaderSignatureInsert('15px Sarabun', insertCoordinates.startX, insertCoordinates.startY, text);
+
+        $('#positionX').val(Math.round(insertCoordinates.startX));
+        $('#positionY').val(Math.round(insertCoordinates.startY));
+        $('#positionPages').val(2);
+    };
+    insertCanvas.onmouseup = function () { isDraggingI = false; isResizingI = false; };
+    insertCanvas.onmouseleave = function () { isDraggingI = false; isResizingI = false; };
+
+    drawMarkI(insertCoordinates.startX, insertCoordinates.startY, insertCoordinates.endX, insertCoordinates.endY);
+}
+
                     } else {
                         $('#exampleModal').modal('hide');
                         Swal.fire("", response.message, "error");
