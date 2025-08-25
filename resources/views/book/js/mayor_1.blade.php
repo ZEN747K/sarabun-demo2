@@ -238,74 +238,142 @@
                         removeMarkListener();
                         document.getElementById('manager-save').disabled = false;
 
-                        markEventListener = function(e) {
-                            var markCanvas = document.getElementById('mark-layer');
-                            var markCtx = markCanvas.getContext('2d');
-                            var rect = markCanvas.getBoundingClientRect();
-                            var startX = (e.clientX - rect.left);
-                            var startY = (e.clientY - rect.top);
+                        
+// === Drag & Resize selection (merged from admin) ===
+document.getElementById('manager-sinature').disabled = true;
+document.getElementById('manager-save').disabled = false;
 
-                            var endX = startX + 230;
-                            var endY = startY + 115;
+var markCanvas = document.getElementById('mark-layer');
+var markCtx = markCanvas.getContext('2d');
 
-                            markCoordinates = {
-                                startX,
-                                startY,
-                                endX,
-                                endY
-                            };
-                            $('#positionX').val(startX);
-                            $('#positionY').val(startY);
+// Default box centered
+var defaultWidth = 220;
+var defaultHeight = 115;
+markCoordinates = {
+    startX: (markCanvas.width - defaultWidth) / 2,
+    startY: (markCanvas.height - defaultHeight) / 2,
+    endX: (markCanvas.width - defaultWidth) / 2 + defaultWidth,
+    endY: (markCanvas.height - defaultHeight) / 2 + defaultHeight
+};
 
-                            var text = $('#modal-text').val();
-                            var lineBreakCount = countLineBreaks(text);
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function() {
-                                return $(this).val();
-                            }).get();
-                            drawMarkSignature(startX - 40, startY + (20 * lineBreakCount), endX, endY, checkedValues);
-                            drawTextHeaderSignature('15px Sarabun', startX, startY, text);
+// For UI feedback & interactions
+var isDragging = false;
+var isResizing = false;
+var dragOffsetX = 0;
+var dragOffsetY = 0;
+var resizeHandleSize = 10;
 
-                            var i = 0;
-                            var checkbox_text = '';
-                            var checkbox_x = 0;
-                            var plus_y = 20;
-                            checkedValues.forEach(element => {
-                                if (element == 4) {
-                                    plus_y = 160;
-                                }
-                            });
+// Helper to detect handle
+function isOnResizeHandle(mouseX, mouseY) {
+    return (
+        mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
+        mouseY >= markCoordinates.endY - resizeHandleSize && mouseY <= markCoordinates.endY
+    );
+}
 
-                            checkedValues.forEach(element => {
-                                switch (element) {
-                                    case '1':
-                                        checkbox_text = `({{$users->fullname}})`;
-                                        break;
-                                    case '2':
-                                        checkbox_text = `{{$permission_data->permission_name}}`;
-                                        break;
-                                    case '3':
-                                        checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`;
-                                        break;
-                                }
-                                var lines = checkbox_text.split('\n');
-                                if (element != 4) {
-                                    drawTextHeaderSignature('15px Sarabun', startX, (startY + plus_y + (20 * lineBreakCount)) + (20 * i), checkbox_text);
-                                }
-                                if (lines.length > 1) {
-                                    var stop = 0;
-                                    lines.forEach(element => {
-                                        if (stop != 0) {
-                                            i++;
-                                        }
-                                        stop++;
-                                    });
-                                }
-                                i++;
-                            });
-                        };
+// Helper to detect inside box
+function isInsideBox(mouseX, mouseY) {
+    return (
+        mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
+        mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
+    );
+}
 
-                        var markCanvas = document.getElementById('mark-layer');
-                        markCanvas.addEventListener('click', markEventListener);
+// Hover cursor feedback
+markCanvas.addEventListener('mousemove', function(e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+    if (isOnResizeHandle(mouseX, mouseY)) {
+        markCanvas.style.cursor = 'se-resize';
+    } else if (isInsideBox(mouseX, mouseY)) {
+        markCanvas.style.cursor = 'move';
+    } else {
+        markCanvas.style.cursor = 'default';
+    }
+});
+
+// Mouse down: start drag or resize
+markCanvas.onmousedown = function(e) {
+    var rect = markCanvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+    if (isOnResizeHandle(mouseX, mouseY)) {
+        isResizing = true;
+    } else if (isInsideBox(mouseX, mouseY)) {
+        isDragging = true;
+        dragOffsetX = mouseX - markCoordinates.startX;
+        dragOffsetY = mouseY - markCoordinates.startY;
+    }
+};
+
+// Mouse move: update box
+markCanvas.onmousemove = function(e) {
+    if (!isDragging && !isResizing) { return; }
+    var rect = markCanvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+
+    if (isDragging) {
+        var newStartX = mouseX - dragOffsetX;
+        var newStartY = mouseY - dragOffsetY;
+        var width = markCoordinates.endX - markCoordinates.startX;
+        var height = markCoordinates.endY - markCoordinates.startY;
+
+        markCoordinates.startX = Math.max(0, Math.min(newStartX, markCanvas.width - width));
+        markCoordinates.startY = Math.max(0, Math.min(newStartY, markCanvas.height - height));
+        markCoordinates.endX = markCoordinates.startX + width;
+        markCoordinates.endY = markCoordinates.startY + height;
+    } else if (isResizing) {
+        markCoordinates.endX = Math.max(markCoordinates.startX + 40, Math.min(mouseX, markCanvas.width));
+        markCoordinates.endY = Math.max(markCoordinates.startY + 40, Math.min(mouseY, markCanvas.height));
+    }
+
+    // Preview box and content
+    drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
+
+    // Pull current values from modal form
+    var text = $('#modal-text').val();
+    var checkedValues = $('input[type="checkbox"]:checked').map(function() {
+        return $(this).val();
+    }).get();
+
+    // Draw preview content scaled to current box
+    var boxW = markCoordinates.endX - markCoordinates.startX;
+    var boxH = markCoordinates.endY - markCoordinates.startY;
+    var scaleW = boxW / defaultWidth;
+    var scaleH = boxH / defaultHeight;
+    var scale = Math.max(0.5, Math.min(2.5, Math.min(scaleW, scaleH)));
+
+    // Center text baseline similar to old logic
+    var lineBreakCount = (text.match(/\n/g) || []).length;
+    drawMarkSignature(markCoordinates.startX - 40, markCoordinates.startY + (20 * lineBreakCount), markCoordinates.endX, markCoordinates.endY, checkedValues);
+
+    // Header text preview with scaled font
+    drawTextHeaderSignature((15 * scale) + 'px Sarabun', markCoordinates.startX, markCoordinates.startY, text);
+
+    // Keep hidden inputs updated
+    $('#positionX').val(Math.round(markCoordinates.startX));
+    $('#positionY').val(Math.round(markCoordinates.startY));
+};
+
+// Mouse up: stop drag/resize
+markCanvas.onmouseup = function() {
+    isDragging = false;
+    isResizing = false;
+};
+
+markCanvas.onmouseleave = function() {
+    isDragging = false;
+    isResizing = false;
+};
+
+// Initial draw
+drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
+// Prime hidden inputs
+$('#positionX').val(Math.round(markCoordinates.startX));
+$('#positionY').val(Math.round(markCoordinates.startY));
+
                     } else {
                         $('#exampleModal').modal('hide');
                         Swal.fire("", response.message, "error");
