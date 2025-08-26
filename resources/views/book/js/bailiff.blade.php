@@ -15,7 +15,7 @@
 
     var imgData = null;
 
-    // ป้องกันการเรียกใช้ canvas ที่ยังไม่มีด้วย helper
+    // helper กัน null
     function getCanvasOrNull(id) {
         var c = document.getElementById(id);
         if (!c) return null;
@@ -24,13 +24,13 @@
         return { canvas: c, ctx: ctx };
     }
 
-    // Preload signature image
+    // preload ลายเซ็น
     var signatureImg = new Image();
     var signatureImgLoaded = false;
-    signatureImg.onload = function() { signatureImgLoaded = true; };
+    signatureImg.onload = function(){ signatureImgLoaded = true; };
     signatureImg.src = signature;
 
-    // เก็บพิกัดกล่อง draggable
+    // เก็บพิกัดกล่อง
     var signatureCoordinates = null;
 
     function pdf(url) {
@@ -58,58 +58,32 @@
 
                 let renderContext = { canvasContext: pdfCtx, viewport: viewport };
                 let renderTask = page.render(renderContext);
-
-                renderTask.promise.then(function() {
+                renderTask.promise.then(function(){
                     pageRendering = false;
-                    if (pageNumPending !== null) {
-                        renderPage(pageNumPending);
-                        pageNumPending = null;
-                    }
+                    if (pageNumPending !== null) { renderPage(pageNumPending); pageNumPending = null; }
                 });
             });
             if (selectPage) selectPage.value = num;
         }
 
-        function queueRenderPage(num) {
-            if (pageRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
-            }
-        }
-
-        function onNextPage() {
-            if (pageNum >= pdfDoc.numPages) return;
-            pageNum++;
-            queueRenderPage(pageNum);
-        }
-
-        function onPrevPage() {
-            if (pageNum <= 1) return;
-            pageNum--;
-            queueRenderPage(pageNum);
-        }
+        function queueRenderPage(num){ pageRendering ? pageNumPending = num : renderPage(num); }
+        function onNextPage(){ if (pageNum < pdfDoc.numPages){ pageNum++; queueRenderPage(pageNum);} }
+        function onPrevPage(){ if (pageNum > 1){ pageNum--; queueRenderPage(pageNum);} }
 
         if (selectPage) {
-            selectPage.addEventListener('change', function() {
-                let selectedPage = parseInt(this.value);
-                if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
-                    pageNum = selectedPage;
-                    queueRenderPage(selectedPage);
-                }
+            selectPage.addEventListener('change', function(){
+                let n = parseInt(this.value);
+                if (n && n>=1 && n<=pdfDoc.numPages){ pageNum = n; queueRenderPage(n); }
             });
         }
 
         pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
             pdfDoc = pdfDoc_;
             if (selectPage) {
-                // เติม option เลขหน้า
                 while (selectPage.firstChild) selectPage.removeChild(selectPage.firstChild);
-                for (let i = 1; i <= pdfDoc.numPages; i++) {
-                    let option = document.createElement('option');
-                    option.value = i;
-                    option.textContent = i;
-                    selectPage.appendChild(option);
+                for (let i=1;i<=pdfDoc.numPages;i++){
+                    let op = document.createElement('option');
+                    op.value=i; op.textContent=i; selectPage.appendChild(op);
                 }
             }
             renderPage(pageNum);
@@ -122,388 +96,235 @@
         if (btnNext) btnNext.addEventListener('click', onNextPage);
         if (btnPrev) btnPrev.addEventListener('click', onPrevPage);
 
-        function countLineBreaks(text) {
-            var lines = String(text || '').split('\n');
-            return lines.length - 1;
-        }
-
-        function drawMarkSignature(startX, startY, endX, endY, checkedValues) {
-            // insert layer (ถ้ามี)
-            var ins = getCanvasOrNull('mark-layer-insert');
-            if (ins) ins.ctx.clearRect(0, 0, ins.canvas.width, ins.canvas.height);
-
-            // main layer
-            var main = getCanvasOrNull('mark-layer');
-            if (!main) return;
-            main.ctx.clearRect(0, 0, main.canvas.width, main.canvas.height);
-
-            checkedValues.forEach(element => {
-                if (element == 4) {
-                    var img = new Image();
-                    img.src = signature;
-                    img.onload = function() {
-                        var imgWidth = 240, imgHeight = 130;
-                        var centeredX = (startX + 50) - (imgWidth / 2);
-                        var centeredY = (startY + 60) - (imgHeight / 2);
-                        main.ctx.drawImage(img, centeredX, centeredY, imgWidth, imgHeight);
-                        imgData = { x: centeredX, y: centeredY, width: imgWidth, height: imgHeight };
-                    };
-                }
-            });
-        }
-
-        function drawMarkSignatureInsert(startX, startY, endX, endY, checkedValues) {
-            // main clear
-            var main = getCanvasOrNull('mark-layer');
-            if (main) main.ctx.clearRect(0, 0, main.canvas.width, main.canvas.height);
-
-            // insert layer
-            var ins = getCanvasOrNull('mark-layer-insert');
-            if (!ins) return;
-            ins.ctx.clearRect(0, 0, ins.canvas.width, ins.canvas.height);
-
-            checkedValues.forEach(element => {
-                if (element == 4) {
-                    var img = new Image();
-                    img.src = signature;
-                    img.onload = function() {
-                        var imgWidth = 240, imgHeight = 130;
-                        var centeredX = (startX + 50) - (imgWidth / 2);
-                        var centeredY = (startY + 60) - (imgHeight / 2);
-                        ins.ctx.drawImage(img, centeredX, centeredY, imgWidth, imgHeight);
-                        imgData = { x: centeredX, y: centeredY, width: imgWidth, height: imgHeight };
-                    };
-                }
-            });
-        }
-
-        function drawTextHeaderSignature(type, startX, startY, text) {
-            var main = getCanvasOrNull('mark-layer');
-            if (!main) return;
-            main.ctx.font = type;
-            main.ctx.fillStyle = "blue";
-            var lines = String(text || '').split('\n');
-            var lineHeight = 20;
-            for (var i = 0; i < lines.length; i++) {
-                var textWidth = main.ctx.measureText(lines[i]).width;
-                var centeredX = startX - (textWidth / 2);
-                main.ctx.fillText(lines[i], centeredX, startY + (i * lineHeight));
+        function drawTextHeaderSignature(type, cx, y, text){
+            var main = getCanvasOrNull('mark-layer'); if (!main) return;
+            main.ctx.font = type; main.ctx.fillStyle = "blue";
+            var lines = String(text||'').split('\n'), lh = 20;
+            for (var i=0;i<lines.length;i++){
+                var tw = main.ctx.measureText(lines[i]).width;
+                main.ctx.fillText(lines[i], cx - (tw/2), y + (i*lh));
             }
         }
 
-        function drawTextHeaderSignatureInsert(type, startX, startY, text) {
-            var ins = getCanvasOrNull('mark-layer-insert');
-            if (!ins) return;
-            ins.ctx.font = type;
-            ins.ctx.fillStyle = "blue";
-            var lines = String(text || '').split('\n');
-            var lineHeight = 20;
-            for (var i = 0; i < lines.length; i++) {
-                var textWidth = ins.ctx.measureText(lines[i]).width;
-                var centeredX = startX - (textWidth / 2);
-                ins.ctx.fillText(lines[i], centeredX, startY + (i * lineHeight));
-            }
-        }
-
-        $('#modalForm').on('submit', function(e) {
+        $('#modalForm').on('submit', function(e){
             e.preventDefault();
             var formData = new FormData(this);
             $('#exampleModal').modal('hide');
             Swal.showLoading();
+
             $.ajax({
                 type: "post",
                 url: "/book/confirm_signature",
                 data: formData,
                 dataType: "json",
-                contentType: false,
-                processData: false,
+                contentType: false, processData: false,
                 headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                success: function(response) {
-                    if (response.status) {
+                success: function(response){
+                    if (!response.status){
                         $('#exampleModal').modal('hide');
-                        setTimeout(() => { swal.close(); }, 1500);
-                        resetMarking();
-                        removeMarkListener();
-                        document.getElementById('manager-save').disabled = false;
-
-                        // === Drag & Resize selection (main canvas) ===
-                        var btnSig = document.getElementById('manager-sinature');
-                        if (btnSig) btnSig.disabled = true;
-                        document.getElementById('manager-save').disabled = false;
-
-                        var main = getCanvasOrNull('mark-layer');
-                        if (!main) return;
-                        var markCanvas = main.canvas;
-                        var markCtx = main.ctx;
-
-                        // Default boxes
-                        var defaultTextWidth = 220;
-                        var defaultTextHeight = 40;
-                        var defaultBottomBoxHeight = 80;
-                        var defaultImageWidth = 240;
-                        var defaultImageHeight = 130;
-
-                        var startX = (markCanvas.width - defaultTextWidth) / 2;
-                        var startY = (markCanvas.height - (defaultTextHeight + defaultBottomBoxHeight + defaultImageHeight + 40)) / 2;
-
-                        signatureCoordinates = {
-                            textBox: {
-                                startX: startX,
-                                startY: startY,
-                                endX: startX + defaultTextWidth,
-                                endY: startY + defaultTextHeight,
-                                type: 'text'
-                            },
-                            bottomBox: {
-                                startX: startX,
-                                startY: startY + defaultTextHeight + 10,
-                                endX: startX + defaultTextWidth,
-                                endY: startY + defaultTextHeight + 10 + defaultBottomBoxHeight,
-                                type: 'bottom'
-                            },
-                            imageBox: {
-                                startX: startX - 13,
-                                startY: startY + defaultTextHeight + defaultBottomBoxHeight + 20,
-                                endX: startX + defaultImageWidth - 13,
-                                endY: startY + defaultTextHeight + defaultBottomBoxHeight + 20 + defaultImageHeight,
-                                type: 'image'
-                            }
-                        };
-
-                        $('#positionX').val(startX);
-                        $('#positionY').val(startY);
-                        $('#positionPages').val(1);
-
-                        redrawSignatureBoxes();
-
-                        var isDragging = false;
-                        var isResizing = false;
-                        var activeBox = null;
-                        var dragOffsetX = 0;
-                        var dragOffsetY = 0;
-                        var resizeHandleSize = 16;
-
-                        function redrawSignatureBoxes() {
-                            markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-
-                            var text = $('#modal-text').val();
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-
-                            // text box
-                            var textBox = signatureCoordinates.textBox;
-                            markCtx.save();
-                            markCtx.strokeStyle = 'blue';
-                            markCtx.lineWidth = 0.5;
-                            markCtx.strokeRect(textBox.startX, textBox.startY, textBox.endX - textBox.startX, textBox.endY - textBox.startY);
-                            // resize handle
-                            markCtx.fillStyle = '#fff';
-                            markCtx.strokeStyle = '#007bff';
-                            markCtx.lineWidth = 2;
-                            markCtx.fillRect(textBox.endX - resizeHandleSize, textBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                            markCtx.strokeRect(textBox.endX - resizeHandleSize, textBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                            markCtx.restore();
-
-                            var textScale = Math.min((textBox.endX - textBox.startX) / 220, (textBox.endY - textBox.startY) / 40);
-                            textScale = Math.max(0.5, Math.min(2.5, textScale));
-                            // วาด "ลายเซ็นก่อน" (จาก requirement ก่อนหน้า)
-                            if (checkedValues.includes('4') && signatureImgLoaded) {
-                                var imgBox = signatureCoordinates.imageBox;
-                                var w = Math.max(40, imgBox.endX - imgBox.startX);
-                                var h = Math.max(30, imgBox.endY - imgBox.startY);
-                                // กรอบ + handle
-                                markCtx.save();
-                                markCtx.strokeStyle = 'green';
-                                markCtx.lineWidth = 0.5;
-                                markCtx.strokeRect(imgBox.startX, imgBox.startY, w, h);
-                                markCtx.fillStyle = '#fff';
-                                markCtx.strokeStyle = '#28a745';
-                                markCtx.lineWidth = 2;
-                                markCtx.fillRect(imgBox.endX - resizeHandleSize, imgBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                                markCtx.strokeRect(imgBox.endX - resizeHandleSize, imgBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                                markCtx.restore();
-                                // วาดรูป
-                                markCtx.drawImage(signatureImg, imgBox.startX, imgBox.startY, w, h);
-                            }
-
-                            // แล้วค่อยข้อความหัวบน
-                            drawTextHeaderSignature((15 * textScale).toFixed(1) + 'px Sarabun',
-                                (textBox.startX + textBox.endX) / 2,
-                                textBox.startY + 25 * textScale,
-                                text);
-
-                            // bottom box
-                            var bottomBox = signatureCoordinates.bottomBox;
-                            markCtx.save();
-                            markCtx.strokeStyle = 'purple';
-                            markCtx.lineWidth = 0.5;
-                            markCtx.strokeRect(bottomBox.startX, bottomBox.startY, bottomBox.endX - bottomBox.startX, bottomBox.endY - bottomBox.startY);
-                            // resize handle
-                            markCtx.fillStyle = '#fff';
-                            markCtx.strokeStyle = '#6f42c1';
-                            markCtx.lineWidth = 2;
-                            markCtx.fillRect(bottomBox.endX - resizeHandleSize, bottomBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                            markCtx.strokeRect(bottomBox.endX - resizeHandleSize, bottomBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-                            markCtx.restore();
-
-                            var bottomScale = Math.min((bottomBox.endX - bottomBox.startX) / 220, (bottomBox.endY - bottomBox.startY) / 80);
-                            bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
-                            var i = 0;
-                            checkedValues.forEach(function (element) {
-                                if (element != 4) {
-                                    var checkbox_text = '';
-                                    switch (element) {
-                                        case '1': checkbox_text = `({{$users->fullname}})`; break;
-                                        case '2': checkbox_text = `{{$permission_data->permission_name}}`; break;
-                                        case '3': checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`; break;
-                                    }
-                                    drawTextHeaderSignature((15 * bottomScale).toFixed(1) + 'px Sarabun',
-                                        (bottomBox.startX + bottomBox.endX) / 2,
-                                        bottomBox.startY + 25 * bottomScale + (20 * i * bottomScale),
-                                        checkbox_text);
-                                    i++;
-                                }
-                            });
-                        }
-
-                        function isOnResizeHandle(mouseX, mouseY, box) {
-                            return (
-                                mouseX >= box.endX - resizeHandleSize && mouseX <= box.endX &&
-                                mouseY >= box.endY - resizeHandleSize && mouseY <= box.endY
-                            );
-                        }
-
-                        function isInBox(mouseX, mouseY, box) {
-                            return (
-                                mouseX >= box.startX && mouseX <= box.endX &&
-                                mouseY >= box.startY && mouseY <= box.endY
-                            );
-                        }
-
-                        // *** FIXED: วงเล็บครบ และ return null ถูกที่ ***
-                        function getActiveBox(mouseX, mouseY) {
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-                            var hasImage = checkedValues.includes('4');
-                            if (hasImage && isInBox(mouseX, mouseY, signatureCoordinates.imageBox)) {
-                                return signatureCoordinates.imageBox;
-                            } else if (isInBox(mouseX, mouseY, signatureCoordinates.textBox)) {
-                                return signatureCoordinates.textBox;
-                            } else if (isInBox(mouseX, mouseY, signatureCoordinates.bottomBox)) {
-                                return signatureCoordinates.bottomBox;
-                            }
-                            return null;
-                        }
-
-                        markCanvas.addEventListener('mousemove', function (e) {
-                            var rect = markCanvas.getBoundingClientRect();
-                            var x = e.clientX - rect.left;
-                            var y = e.clientY - rect.top;
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-                            var hasImage = checkedValues.includes('4');
-
-                            if (isOnResizeHandle(x, y, signatureCoordinates.textBox) ||
-                                (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox)) ||
-                                isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
-                                markCanvas.style.cursor = 'se-resize';
-                            } else if (getActiveBox(x, y)) {
-                                markCanvas.style.cursor = 'move';
-                            } else {
-                                markCanvas.style.cursor = 'default';
-                            }
-                        });
-
-                        markCanvas.onmousedown = function (e) {
-                            var rect = markCanvas.getBoundingClientRect();
-                            var x = e.clientX - rect.left;
-                            var y = e.clientY - rect.top;
-                            var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
-                            var hasImage = checkedValues.includes('4');
-
-                            if (isOnResizeHandle(x, y, signatureCoordinates.textBox)) {
-                                isResizing = true;
-                                activeBox = signatureCoordinates.textBox;
-                                e.preventDefault();
-                                window.addEventListener('mousemove', onResizeMove);
-                                window.addEventListener('mouseup', onResizeEnd);
-                            } else if (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox)) {
-                                isResizing = true;
-                                activeBox = signatureCoordinates.imageBox;
-                                e.preventDefault();
-                                window.addEventListener('mousemove', onResizeMove);
-                                window.addEventListener('mouseup', onResizeEnd);
-                            } else if (isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
-                                isResizing = true;
-                                activeBox = signatureCoordinates.bottomBox;
-                                e.preventDefault();
-                                window.addEventListener('mousemove', onResizeMove);
-                                window.addEventListener('mouseup', onResizeEnd);
-                            } else {
-                                activeBox = getActiveBox(x, y);
-                                if (activeBox) {
-                                    isDragging = true;
-                                    dragOffsetX = x - activeBox.startX;
-                                    dragOffsetY = y - activeBox.startY;
-                                    e.preventDefault();
-                                    window.addEventListener('mousemove', onDragMove);
-                                    window.addEventListener('mouseup', onDragEnd);
-                                }
-                            }
-                        };
-
-                        function onDragMove(e) {
-                            if (!isDragging || !activeBox) return;
-                            var rect = markCanvas.getBoundingClientRect();
-                            var x = e.clientX - rect.left;
-                            var y = e.clientY - rect.top;
-                            var w = activeBox.endX - activeBox.startX;
-                            var h = activeBox.endY - activeBox.startY;
-                            var nsx = x - dragOffsetX;
-                            var nsy = y - dragOffsetY;
-                            nsx = Math.max(0, Math.min(markCanvas.width - w, nsx));
-                            nsy = Math.max(0, Math.min(markCanvas.height - h, nsy));
-                            activeBox.startX = nsx;
-                            activeBox.startY = nsy;
-                            activeBox.endX = nsx + w;
-                            activeBox.endY = nsy + h;
-                            if (activeBox.type === 'text') {
-                                $('#positionX').val(nsx);
-                                $('#positionY').val(nsy);
-                            }
-                            redrawSignatureBoxes();
-                        }
-
-                        function onResizeMove(e) {
-                            if (!isResizing || !activeBox) return;
-                            var rect = markCanvas.getBoundingClientRect();
-                            var x = e.clientX - rect.left;
-                            var y = e.clientY - rect.top;
-                            var minW = 40, minH = 30;
-                            var newEndX = Math.max(activeBox.startX + minW, x);
-                            var newEndY = Math.max(activeBox.startY + minH, y);
-                            newEndX = Math.min(markCanvas.width, newEndX);
-                            newEndY = Math.min(markCanvas.height, newEndY);
-                            activeBox.endX = newEndX;
-                            activeBox.endY = newEndY;
-                            redrawSignatureBoxes();
-                        }
-
-                        function onDragEnd() {
-                            isDragging = false;
-                            activeBox = null;
-                            window.removeEventListener('mousemove', onDragMove);
-                            window.removeEventListener('mouseup', onDragEnd);
-                        }
-
-                        function onResizeEnd() {
-                            isResizing = false;
-                            activeBox = null;
-                            window.removeEventListener('mousemove', onResizeMove);
-                            window.removeEventListener('mouseup', onResizeEnd);
-                        }
-
-                    } else {
-                        $('#exampleModal').modal('hide');
-                        Swal.fire("", response.message, "error");
+                        Swal.fire("", response.message || "เกิดข้อผิดพลาด", "error");
+                        return;
                     }
+
+                    setTimeout(()=>{ swal.close(); }, 500);
+                    resetMarking(); removeMarkListener();
+                    document.getElementById('manager-save').disabled = false;
+
+                    var btnSig = document.getElementById('manager-sinature');
+                    if (btnSig) btnSig.disabled = true;
+
+                    var main = getCanvasOrNull('mark-layer'); if (!main) return;
+                    var markCanvas = main.canvas, markCtx = main.ctx;
+
+                    // ===== ขนาดกล่องเริ่มต้น =====
+                    var defaultTextWidth = 220, defaultTextHeight = 40;
+                    var defaultImageWidth = 240, defaultImageHeight = 130;
+                    var defaultBottomBoxHeight = 80;
+                    var gap = 10;
+
+                    // ===== จัดเรียง "บน → ลายเซ็น → ล่าง" =====
+                    var startX = (markCanvas.width - defaultTextWidth) / 2;
+                    var totalHeight = defaultTextHeight + gap + defaultImageHeight + gap + defaultBottomBoxHeight + 20;
+                    var startY = (markCanvas.height - totalHeight) / 2;
+
+                    signatureCoordinates = {
+                        textBox: {
+                            startX: startX,
+                            startY: startY,
+                            endX: startX + defaultTextWidth,
+                            endY: startY + defaultTextHeight,
+                            type: 'text'
+                        },
+                        imageBox: {
+                            startX: startX - 13,
+                            startY: startY + defaultTextHeight + gap, // ต่อจากกล่องบน
+                            endX: (startX - 13) + defaultImageWidth,
+                            endY: startY + defaultTextHeight + gap + defaultImageHeight,
+                            type: 'image'
+                        },
+                        bottomBox: {
+                            startX: startX,
+                            startY: startY + defaultTextHeight + gap + defaultImageHeight + gap, // ต่อจากรูป
+                            endX: startX + defaultTextWidth,
+                            endY: startY + defaultTextHeight + gap + defaultImageHeight + gap + defaultBottomBoxHeight,
+                            type: 'bottom'
+                        }
+                    };
+
+                    $('#positionX').val(startX);
+                    $('#positionY').val(startY);
+                    $('#positionPages').val(1);
+
+                    var isDragging=false, isResizing=false, activeBox=null;
+                    var dragOffsetX=0, dragOffsetY=0, resizeHandleSize=16;
+
+                    function isOnResizeHandle(x,y,box){
+                        return (x>=box.endX-resizeHandleSize && x<=box.endX && y>=box.endY-resizeHandleSize && y<=box.endY);
+                    }
+                    function isInBox(x,y,box){
+                        return (x>=box.startX && x<=box.endX && y>=box.startY && y<=box.endY);
+                    }
+                    function getChecked(){ return $('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get(); }
+
+                    function redrawSignatureBoxes(){
+                        markCtx.clearRect(0,0,markCanvas.width,markCanvas.height);
+                        var checkedValues = getChecked();
+
+                        // ===== 1) วาดกล่องข้อความบน =====
+                        var textBox = signatureCoordinates.textBox;
+                        markCtx.save();
+                        markCtx.strokeStyle = 'blue'; markCtx.lineWidth = 0.5;
+                        markCtx.strokeRect(textBox.startX, textBox.startY, textBox.endX-textBox.startX, textBox.endY-textBox.startY);
+                        // handle
+                        markCtx.fillStyle = '#fff'; markCtx.strokeStyle = '#007bff'; markCtx.lineWidth = 2;
+                        markCtx.fillRect(textBox.endX-16, textBox.endY-16, 16, 16);
+                        markCtx.strokeRect(textBox.endX-16, textBox.endY-16, 16, 16);
+                        markCtx.restore();
+
+                        var textScale = Math.min((textBox.endX-textBox.startX)/220, (textBox.endY-textBox.startY)/40);
+                        textScale = Math.max(0.5, Math.min(2.5, textScale));
+                        var topText = $('#modal-text').val();
+                        drawTextHeaderSignature((15*textScale).toFixed(1)+'px Sarabun',
+                            (textBox.startX+textBox.endX)/2,
+                            textBox.startY + 25*textScale,
+                            topText);
+
+                        // ===== 2) วาดกรอบ/รูป "ลายเซ็น" กล่องที่สอง =====
+                        if (checkedValues.includes('4') && signatureImgLoaded) {
+                            var imgBox = signatureCoordinates.imageBox;
+                            var w = Math.max(40, imgBox.endX - imgBox.startX);
+                            var h = Math.max(30, imgBox.endY - imgBox.startY);
+
+                            markCtx.save();
+                            markCtx.strokeStyle = 'green'; markCtx.lineWidth = 0.5;
+                            markCtx.strokeRect(imgBox.startX, imgBox.startY, w, h);
+                            markCtx.fillStyle = '#fff'; markCtx.strokeStyle = '#28a745'; markCtx.lineWidth = 2;
+                            markCtx.fillRect(imgBox.endX-16, imgBox.endY-16, 16, 16);
+                            markCtx.strokeRect(imgBox.endX-16, imgBox.endY-16, 16, 16);
+                            markCtx.restore();
+
+                            markCtx.drawImage(signatureImg, imgBox.startX, imgBox.startY, w, h);
+                        }
+
+                        // ===== 3) วาดกล่องข้อความล่าง =====
+                        var bottomBox = signatureCoordinates.bottomBox;
+                        markCtx.save();
+                        markCtx.strokeStyle = 'purple'; markCtx.lineWidth = 0.5;
+                        markCtx.strokeRect(bottomBox.startX, bottomBox.startY, bottomBox.endX-bottomBox.startX, bottomBox.endY-bottomBox.startY);
+                        // handle
+                        markCtx.fillStyle = '#fff'; markCtx.strokeStyle = '#6f42c1'; markCtx.lineWidth = 2;
+                        markCtx.fillRect(bottomBox.endX-16, bottomBox.endY-16, 16, 16);
+                        markCtx.strokeRect(bottomBox.endX-16, bottomBox.endY-16, 16, 16);
+                        markCtx.restore();
+
+                        var bottomScale = Math.min((bottomBox.endX-bottomBox.startX)/220, (bottomBox.endY-bottomBox.startY)/80);
+                        bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
+                        var i = 0;
+                        checkedValues.forEach(function (element) {
+                            if (element == '4') return; // ข้ามลายเซ็น
+                            var line = '';
+                            switch (element) {
+                                case '1': line = `({{$users->fullname}})`; break;
+                                case '2': line = `{{$permission_data->permission_name}}`; break;
+                                case '3': line = `{{convertDateToThai(date("Y-m-d"))}}`; break;
+                            }
+                            drawTextHeaderSignature((15*bottomScale).toFixed(1)+'px Sarabun',
+                                (bottomBox.startX+bottomBox.endX)/2,
+                                bottomBox.startY + 25*bottomScale + (20*i*bottomScale),
+                                line);
+                            i++;
+                        });
+                    }
+
+                    function getActiveBox(x,y){
+                        var checkedValues = getChecked();
+                        var hasImage = checkedValues.includes('4');
+                        if (hasImage && isInBox(x,y, signatureCoordinates.imageBox)) return signatureCoordinates.imageBox;
+                        else if (isInBox(x,y, signatureCoordinates.textBox)) return signatureCoordinates.textBox;
+                        else if (isInBox(x,y, signatureCoordinates.bottomBox)) return signatureCoordinates.bottomBox;
+                        return null; // <<< วงเล็บครบ
+                    }
+
+                    // cursor
+                    markCanvas.addEventListener('mousemove', function(e){
+                        var r = markCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+                        var checkedValues = getChecked(), hasImage = checkedValues.includes('4');
+                        if (isOnResizeHandle(x,y, signatureCoordinates.textBox) ||
+                            (hasImage && isOnResizeHandle(x,y, signatureCoordinates.imageBox)) ||
+                            isOnResizeHandle(x,y, signatureCoordinates.bottomBox)) {
+                            markCanvas.style.cursor = 'se-resize';
+                        } else if (getActiveBox(x,y)) {
+                            markCanvas.style.cursor = 'move';
+                        } else {
+                            markCanvas.style.cursor = 'default';
+                        }
+                    });
+
+                    markCanvas.onmousedown = function(e){
+                        var r = markCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+                        var checkedValues = getChecked(), hasImage = checkedValues.includes('4');
+
+                        if (isOnResizeHandle(x,y, signatureCoordinates.textBox)) {
+                            isResizing = true; activeBox = signatureCoordinates.textBox;
+                            e.preventDefault(); window.addEventListener('mousemove', onResizeMove); window.addEventListener('mouseup', onResizeEnd);
+                        } else if (hasImage && isOnResizeHandle(x,y, signatureCoordinates.imageBox)) {
+                            isResizing = true; activeBox = signatureCoordinates.imageBox;
+                            e.preventDefault(); window.addEventListener('mousemove', onResizeMove); window.addEventListener('mouseup', onResizeEnd);
+                        } else if (isOnResizeHandle(x,y, signatureCoordinates.bottomBox)) {
+                            isResizing = true; activeBox = signatureCoordinates.bottomBox;
+                            e.preventDefault(); window.addEventListener('mousemove', onResizeMove); window.addEventListener('mouseup', onResizeEnd);
+                        } else {
+                            activeBox = getActiveBox(x,y);
+                            if (activeBox){
+                                isDragging = true; dragOffsetX = x - activeBox.startX; dragOffsetY = y - activeBox.startY;
+                                e.preventDefault(); window.addEventListener('mousemove', onDragMove); window.addEventListener('mouseup', onDragEnd);
+                            }
+                        }
+                    };
+
+                    function onDragMove(e){
+                        if (!isDragging || !activeBox) return;
+                        var r = markCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+                        var w = activeBox.endX - activeBox.startX, h = activeBox.endY - activeBox.startY;
+                        var nsx = Math.max(0, Math.min(markCanvas.width - w, x - dragOffsetX));
+                        var nsy = Math.max(0, Math.min(markCanvas.height - h, y - dragOffsetY));
+                        activeBox.startX = nsx; activeBox.startY = nsy; activeBox.endX = nsx + w; activeBox.endY = nsy + h;
+                        if (activeBox.type === 'text'){ $('#positionX').val(nsx); $('#positionY').val(nsy); }
+                        redrawSignatureBoxes();
+                    }
+                    function onDragEnd(){ isDragging=false; activeBox=null; window.removeEventListener('mousemove', onDragMove); window.removeEventListener('mouseup', onDragEnd); }
+                    function onResizeMove(e){
+                        if (!isResizing || !activeBox) return;
+                        var r = markCanvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+                        var minW=40, minH=30;
+                        activeBox.endX = Math.min(markCanvas.width, Math.max(activeBox.startX + minW, x));
+                        activeBox.endY = Math.min(markCanvas.height, Math.max(activeBox.startY + minH, y));
+                        redrawSignatureBoxes();
+                    }
+                    function onResizeEnd(){ isResizing=false; activeBox=null; window.removeEventListener('mousemove', onResizeMove); window.removeEventListener('mouseup', onResizeEnd); }
+
+                    // วาดครั้งแรก
+                    redrawSignatureBoxes();
                 }
             });
         });
@@ -514,433 +335,266 @@
 
     function openPdf(url, id, status, type, is_check = '', number_id, position_id) {
         $('.btn-default').hide();
-        var rejectBtn = document.getElementById('reject-book');
-        if (rejectBtn) rejectBtn.disabled = true;
-        var btnSig = document.getElementById('manager-sinature');
-        if (btnSig) btnSig.disabled = false;
-        var saveStamp = document.getElementById('save-stamp');
-        if (saveStamp) saveStamp.disabled = true;
-        var sendSave = document.getElementById('send-save');
-        if (sendSave) sendSave.disabled = true;
+        var rejectBtn = document.getElementById('reject-book'); if (rejectBtn) rejectBtn.disabled = true;
+        var btnSig = document.getElementById('manager-sinature'); if (btnSig) btnSig.disabled = false;
+        var saveStamp = document.getElementById('save-stamp'); if (saveStamp) saveStamp.disabled = true;
+        var sendSave = document.getElementById('send-save'); if (sendSave) sendSave.disabled = true;
 
-        // สร้าง canvas หลักใหม่
         $('#div-canvas').html(
             '<div style="position: relative;">' +
                 '<canvas id="pdf-render"></canvas>' +
-                '<canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas>' +
+                '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
             '</div>'
         );
         pdf(url);
+
         $('#id').val(id);
         $('#position_id').val(position_id);
-        $('#positionX').val('');
-        $('#positionY').val('');
-        $('#txt_label').text('');
-        $('#users_id').val('');
+        $('#positionX').val(''); $('#positionY').val('');
+        $('#txt_label').text(''); $('#users_id').val('');
         document.getElementById('manager-save').disabled = true;
 
-        if (status == STATUS.BAILIFF_SIGNATURE) {
-            $('#manager-sinature').show();
-            $('#manager-save').show();
-            $('#insert-pages').show();
-        }
-        if (status == STATUS.BAILIFF_SENT) {
-            $('#manager-send').show();
-            $('#send-save').show();
-        }
-        $.get('/book/created_position/' + id, function(res) {
+        if (status == STATUS.BAILIFF_SIGNATURE) { $('#manager-sinature').show(); $('#manager-save').show(); $('#insert-pages').show(); }
+        if (status == STATUS.BAILIFF_SENT) { $('#manager-send').show(); $('#send-save').show(); }
+        $.get('/book/created_position/' + id, function(res){
             if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
-                var rejectBtn2 = document.getElementById('reject-book');
-                if (rejectBtn2) {
-                    rejectBtn2.disabled = false;
-                    $('#reject-book').show();
-                }
+                var rb = document.getElementById('reject-book'); if (rb){ rb.disabled = false; $('#reject-book').show(); }
             }
         });
 
-        resetMarking();
-        removeMarkListener();
+        resetMarking(); removeMarkListener();
     }
 
-    function removeMarkListener() {
+    function removeMarkListener(){
         var markCanvas = document.getElementById('mark-layer');
         var markCanvasInsert = document.getElementById('mark-layer-insert');
-        if (markEventListener && markCanvas) {
-            markCanvas.removeEventListener('click', markEventListener);
-            markEventListener = null;
-        }
-        if (markEventListenerInsert && markCanvasInsert) {
-            markCanvasInsert.removeEventListener('click', markEventListenerInsert);
-            markEventListenerInsert = null;
-        }
+        if (markEventListener && markCanvas){ markCanvas.removeEventListener('click', markEventListener); markEventListener=null; }
+        if (markEventListenerInsert && markCanvasInsert){ markCanvasInsert.removeEventListener('click', markEventListenerInsert); markEventListenerInsert=null; }
     }
 
-    function resetMarking() {
-        var main = getCanvasOrNull('mark-layer');
-        if (main) main.ctx.clearRect(0, 0, main.canvas.width, main.canvas.height);
-        var ins = getCanvasOrNull('mark-layer-insert');
-        if (ins) ins.ctx.clearRect(0, 0, ins.canvas.width, ins.canvas.height);
+    function resetMarking(){
+        var main = getCanvasOrNull('mark-layer'); if (main) main.ctx.clearRect(0,0,main.canvas.width, main.canvas.height);
+        var ins = getCanvasOrNull('mark-layer-insert'); if (ins) ins.ctx.clearRect(0,0,ins.canvas.width, ins.canvas.height);
     }
 
     // ====== ส่วนตารางรายการ ======
     if (selectPageTable) {
-        selectPageTable.addEventListener('change', function() {
-            let selectedPage = parseInt(this.value);
-            ajaxTable(selectedPage);
-        });
+        selectPageTable.addEventListener('change', function(){ ajaxTable(parseInt(this.value)); });
     }
 
-    function onNextPageTable() {
-        if (pageNumTalbe >= pageTotal) return;
-        pageNumTalbe++;
-        if (selectPageTable) selectPageTable.value = pageNumTalbe;
-        ajaxTable(pageNumTalbe);
-    }
-
-    function onPrevPageTable() {
-        if (pageNumTalbe <= 1) return;
-        pageNumTalbe--;
-        if (selectPageTable) selectPageTable.value = pageNumTalbe;
-        ajaxTable(pageNumTalbe);
-    }
+    function onNextPageTable(){ if (pageNumTalbe < pageTotal){ pageNumTalbe++; if (selectPageTable) selectPageTable.value = pageNumTalbe; ajaxTable(pageNumTalbe);} }
+    function onPrevPageTable(){ if (pageNumTalbe > 1){ pageNumTalbe--; if (selectPageTable) selectPageTable.value = pageNumTalbe; ajaxTable(pageNumTalbe);} }
 
     var btnNextPage = document.getElementById('nextPage');
     var btnPrevPage = document.getElementById('prevPage');
     if (btnNextPage) btnNextPage.addEventListener('click', onNextPageTable);
     if (btnPrevPage) btnPrevPage.addEventListener('click', onPrevPageTable);
 
-    function ajaxTable(pages) {
-        $('#id').val('');
-        $('#positionX').val('');
-        $('#positionY').val('');
+    function ajaxTable(pages){
+        $('#id,#positionX,#positionY,#users_id').val('');
         $('#txt_label').text('');
-        $('#users_id').val('');
-        var btnSig = document.getElementById('manager-sinature');
-        if (btnSig) btnSig.disabled = false;
+        var btnSig = document.getElementById('manager-sinature'); if (btnSig) btnSig.disabled = false;
         document.getElementById('manager-save').disabled = true;
 
         $.ajax({
-            type: "post",
-            url: "/book/dataList",
-            data: { pages: pages },
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            dataType: "json",
-            success: function(response) {
-                if (response.status == true) {
-                    $('#box-card-item').empty();
-                    $('#div-canvas').html(
-                        '<div style="position: relative;">' +
-                            '<canvas id="pdf-render"></canvas>' +
-                            '<canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas>' +
-                        '</div>'
-                    );
-                    response.book.forEach(element => {
-                        var color = (element.type != 1) ? 'warning' : 'info';
-                        var html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')">' +
-                            '<div class="card border-' + color + ' mb-2">' +
-                                '<div class="card-header text-dark fw-bold">' + element.inputSubject + '</div>' +
-                                '<div class="card-body text-dark">' +
-                                    '<div class="row">' +
-                                        '<div class="col-9">' + element.selectBookFrom + '</div>' +
-                                        '<div class="col-3 fw-bold">' + element.showTime + ' น.</div>' +
-                                    '</div>' +
-                                '</div>' +
-                            '</div>' +
-                        '</a>';
-                        $('#box-card-item').append(html);
-                    });
-                }
+            type:"post", url:"/book/dataList",
+            data:{ pages: pages },
+            headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            dataType:"json",
+            success:function(response){
+                if (!response.status) return;
+                $('#box-card-item').empty();
+                $('#div-canvas').html(
+                    '<div style="position: relative;">' +
+                        '<canvas id="pdf-render"></canvas>' +
+                        '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
+                    '</div>'
+                );
+                response.book.forEach(el=>{
+                    var color = (el.type!=1)?'warning':'info';
+                    var html = '<a href="javascript:void(0)" onclick="openPdf('+"'"+el.url+"'"+','+"'"+el.id+"'"+','+"'"+el.status+"'"+','+"'"+el.type+"'"+','+"'"+el.is_number_stamp+"'"+','+"'"+el.inputBookregistNumber+"'"+','+"'"+el.position_id+"'"+')">'+
+                        '<div class="card border-'+color+' mb-2">'+
+                            '<div class="card-header text-dark fw-bold">'+el.inputSubject+'</div>'+
+                            '<div class="card-body text-dark"><div class="row">'+
+                                '<div class="col-9">'+el.selectBookFrom+'</div>'+
+                                '<div class="col-3 fw-bold">'+el.showTime+' น.</div>'+
+                            '</div></div></div></a>';
+                    $('#box-card-item').append(html);
+                });
             }
         });
     }
 
-    $('#search_btn').click(function(e) {
+    $('#search_btn').click(function(e){
         e.preventDefault();
-        $('#id').val('');
-        $('#positionX').val('');
-        $('#positionY').val('');
-        $('.btn-default').hide();
-        $('#txt_label').text('');
-        $('#users_id').val('');
-        var btnSig = document.getElementById('manager-sinature');
-        if (btnSig) btnSig.disabled = false;
+        $('#id,#positionX,#positionY,#users_id').val(''); $('.btn-default').hide(); $('#txt_label').text('');
+        var btnSig = document.getElementById('manager-sinature'); if (btnSig) btnSig.disabled = false;
         document.getElementById('manager-save').disabled = true;
 
         $.ajax({
-            type: "post",
-            url: "/book/dataListSearch",
-            data: { pages: 1, search: $('#inputSearch').val() },
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            dataType: "json",
-            success: function(response) {
-                if (response.status == true) {
-                    $('#box-card-item').html('');
-                    $('#div-canvas').html(
-                        '<div style="position: relative;">' +
-                            '<canvas id="pdf-render"></canvas>' +
-                            '<canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas>' +
-                        '</div>'
-                    );
-                    pageNumTalbe = 1;
-                    pageTotal = response.totalPages;
-                    response.book.forEach(element => {
-                        var color = (element.type != 1) ? 'warning' : 'info';
-                        var html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')">' +
-                            '<div class="card border-' + color + ' mb-2">' +
-                                '<div class="card-header text-dark fw-bold">' + element.inputSubject + '</div>' +
-                                '<div class="card-body text-dark">' +
-                                    '<div class="row">' +
-                                        '<div class="col-9">' + element.selectBookFrom + '</div>' +
-                                        '<div class="col-3 fw-bold">' + element.showTime + ' น.</div>' +
-                                    '</div>' +
-                                '</div>' +
-                            '</div>' +
-                        '</a>';
-                        $('#box-card-item').append(html);
-                    });
-                    // เติม select หน้า card
-                    var sel = $("#page-select-card");
-                    if (sel.length) {
-                        sel.empty();
-                        for (let index = 1; index <= pageTotal; index++) {
-                            sel.append('<option value="' + index + '">' + index + '</option>');
-                        }
-                    }
-                }
+            type:"post", url:"/book/dataListSearch",
+            data:{ pages:1, search: $('#inputSearch').val() },
+            headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            dataType:"json",
+            success:function(response){
+                if (!response.status) return;
+                $('#box-card-item').html('');
+                $('#div-canvas').html(
+                    '<div style="position: relative;">' +
+                        '<canvas id="pdf-render"></canvas>' +
+                        '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
+                    '</div>'
+                );
+                pageNumTalbe = 1; pageTotal = response.totalPages;
+                response.book.forEach(el=>{
+                    var color = (el.type!=1)?'warning':'info';
+                    var html = '<a href="javascript:void(0)" onclick="openPdf('+"'"+el.url+"'"+','+"'"+el.id+"'"+','+"'"+el.status+"'"+','+"'"+el.type+"'"+','+"'"+el.is_number_stamp+"'"+','+"'"+el.inputBookregistNumber+"'"+','+"'"+el.position_id+"'"+')">'+
+                        '<div class="card border-'+color+' mb-2">'+
+                            '<div class="card-header text-dark fw-bold">'+el.inputSubject+'</div>'+
+                            '<div class="card-body text-dark"><div class="row">'+
+                                '<div class="col-9">'+el.selectBookFrom+'</div>'+
+                                '<div class="col-3 fw-bold">'+el.showTime+' น.</div>'+
+                            '</div></div></div></a>';
+                    $('#box-card-item').append(html);
+                });
+                var sel = $("#page-select-card"); if (sel.length){ sel.empty(); for (let i=1;i<=pageTotal;i++) sel.append('<option value="'+i+'">'+i+'</option>'); }
             }
         });
     });
 
-    $('#manager-save').click(function(e) {
+    $('#manager-save').click(function(e){
         e.preventDefault();
-        var id = $('#id').val();
-        var position_id = $('#position_id').val();
-
+        var id = $('#id').val(), position_id = $('#position_id').val();
         var positionPages = $('#positionPages').val();
         var pages = $('#page-select').find(":selected").val();
         var text = $('#modal-text').val();
-        var checkedValues = $('input[type="checkbox"]:checked').map(function() { return $(this).val(); }).get();
-
+        var checkedValues = $('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get();
         var textBox = signatureCoordinates ? signatureCoordinates.textBox : null;
         var imageBox = signatureCoordinates ? signatureCoordinates.imageBox : null;
         var bottomBox = signatureCoordinates ? signatureCoordinates.bottomBox : null;
 
-        var positionX = null, positionY = null, width = null, height = null;
-        if (textBox) {
-            positionX = textBox.startX;
-            positionY = textBox.startY;
-            width = textBox.endX - textBox.startX;
-            height = textBox.endY - textBox.startY;
-        }
+        if (!id || !textBox){ return Swal.fire("", "กรุณาเลือกตำแหน่งของตราประทับ", "info"); }
 
-        if (id != '' && positionX !== null && positionY !== null) {
-            Swal.fire({
-                title: "ยืนยันการลงลายเซ็น",
-                showCancelButton: true,
-                confirmButtonText: "ตกลง",
-                cancelButtonText: `ยกเลิก`,
-                icon: 'question'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    var data = {
-                        id: id,
-                        positionX: positionX,
-                        positionY: positionY,
-                        pages: pages,
-                        positionPages: positionPages,
-                        status: 9,
-                        text: text,
-                        checkedValues: checkedValues,
-                        width: width,
-                        height: height,
-                        position_id: position_id
+        Swal.fire({ title:"ยืนยันการลงลายเซ็น", showCancelButton:true, confirmButtonText:"ตกลง", cancelButtonText:"ยกเลิก", icon:'question' })
+            .then((r)=>{
+                if (!r.isConfirmed) return;
+                var data = {
+                    id:id, positionX:textBox.startX, positionY:textBox.startY,
+                    pages:pages, positionPages:positionPages, status:9,
+                    text:text, checkedValues:checkedValues,
+                    width: textBox.endX - textBox.startX,
+                    height: textBox.endY - textBox.startY,
+                    position_id: position_id
+                };
+                if (bottomBox){
+                    data.bottomBox = {
+                        startX: bottomBox.startX, startY: bottomBox.startY,
+                        width: bottomBox.endX - bottomBox.startX,
+                        height: bottomBox.endY - bottomBox.startY
                     };
-                    if (bottomBox) {
-                        data.bottomBox = {
-                            startX: bottomBox.startX,
-                            startY: bottomBox.startY,
-                            width: bottomBox.endX - bottomBox.startX,
-                            height: bottomBox.endY - bottomBox.startY
-                        };
-                    }
-                    if (imageBox && checkedValues.includes('4')) {
-                        data.imageBox = {
-                            startX: imageBox.startX,
-                            startY: imageBox.startY,
-                            width: imageBox.endX - imageBox.startX,
-                            height: imageBox.endY - imageBox.startY
-                        };
-                    }
-                    $.ajax({
-                        type: "post",
-                        url: "/book/manager_stamp",
-                        data: data,
-                        dataType: "json",
-                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                        success: function(response) {
-                            if (response.status) {
-                                Swal.fire("", "บันทึกลายเซ็นเรียบร้อยแล้ว", "success");
-                                setTimeout(() => { location.reload(); }, 1500);
-                            } else {
-                                Swal.fire("", "บันทึกไม่สำเร็จ", "error");
-                            }
-                        }
-                    });
                 }
+                if (imageBox && checkedValues.includes('4')){
+                    data.imageBox = {
+                        startX: imageBox.startX, startY: imageBox.startY,
+                        width: imageBox.endX - imageBox.startX,
+                        height: imageBox.endY - imageBox.startY
+                    };
+                }
+                $.ajax({
+                    type:"post", url:"/book/manager_stamp", data:data, dataType:"json",
+                    headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    success:function(res){
+                        if (res.status){ Swal.fire("", "บันทึกลายเซ็นเรียบร้อยแล้ว", "success"); setTimeout(()=>location.reload(), 1200); }
+                        else { Swal.fire("", "บันทึกไม่สำเร็จ", "error"); }
+                    }
+                });
             });
-        } else {
-            Swal.fire("", "กรุณาเลือกตำแหน่งของตราประทับ", "info");
-        }
     });
 
-    $('#manager-send').click(function(e) {
+    $('#manager-send').click(function(e){
         e.preventDefault();
         $.ajax({
-            type: "post",
-            url: "{{ route('book.checkbox_send') }}",
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            success: function(response) {
+            type:"post", url:"{{ route('book.checkbox_send') }}",
+            headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            success:function(response){
                 Swal.fire({
-                    title: 'แทงเรื่อง',
-                    html: response,
-                    allowOutsideClick: false,
-                    focusConfirm: true,
-                    confirmButtonText: 'ตกลง',
-                    showCancelButton: true,
-                    cancelButtonText: `ยกเลิก`,
-                    preConfirm: () => {
-                        var selectedCheckboxes = [];
-                        var textCheckboxes = [];
-                        $('input[name="flexCheckChecked[]"]:checked').each(function() {
-                            selectedCheckboxes.push($(this).val());
-                            textCheckboxes.push($(this).next('label').text().trim());
+                    title:'แทงเรื่อง', html:response, allowOutsideClick:false, focusConfirm:true,
+                    confirmButtonText:'ตกลง', showCancelButton:true, cancelButtonText:'ยกเลิก',
+                    preConfirm:()=>{
+                        var ids=[], texts=[];
+                        $('input[name="flexCheckChecked[]"]:checked').each(function(){
+                            ids.push($(this).val()); texts.push($(this).next('label').text().trim());
                         });
-                        if (selectedCheckboxes.length === 0) {
-                            Swal.showValidationMessage('กรุณาเลือกตัวเลือก');
-                        }
-                        return { id: selectedCheckboxes, text: textCheckboxes };
+                        if (ids.length===0) Swal.showValidationMessage('กรุณาเลือกตัวเลือก');
+                        return { id:ids, text:texts };
                     }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        var id = '';
-                        var txt = '- แทงเรื่อง (';
-                        for (let index = 0; index < result.value.text.length; index++) {
-                            if (index > 0 && index < result.value.text.length) txt += ',';
-                            txt += result.value.text[index];
-                        }
-                        for (let index = 0; index < result.value.id.length; index++) {
-                            if (index > 0 && index < result.value.id.length) id += ',';
-                            id += result.value.id[index];
-                        }
-                        txt += ') -';
-                        $('#txt_label').text(txt);
-                        $('#users_id').val(id);
-                        var sendBtn = document.getElementById('send-save');
-                        if (sendBtn) sendBtn.disabled = false;
-                    }
+                }).then((r)=>{
+                    if (!r.isConfirmed) return;
+                    $('#txt_label').text('- แทงเรื่อง ('+ r.value.text.join(',') +') -');
+                    $('#users_id').val(r.value.id.join(','));
+                    var sendBtn = document.getElementById('send-save'); if (sendBtn) sendBtn.disabled = false;
                 });
             }
         });
     });
 
-    $('#send-save').click(function(e) {
+    $('#send-save').click(function(e){
         e.preventDefault();
-        var id = $('#id').val();
-        var users_id = $('#users_id').val();
-        var position_id = $('#position_id').val();
-        Swal.fire({
-            title: "ยืนยันการแทงเรื่อง",
-            showCancelButton: true,
-            confirmButtonText: "ตกลง",
-            cancelButtonText: `ยกเลิก`,
-            icon: 'question'
-        }).then((result) => {
-            if (result.isConfirmed) {
+        var id = $('#id').val(), users_id = $('#users_id').val(), position_id = $('#position_id').val();
+        Swal.fire({ title:"ยืนยันการแทงเรื่อง", showCancelButton:true, confirmButtonText:"ตกลง", cancelButtonText:"ยกเลิก", icon:'question' })
+            .then((r)=>{
+                if (!r.isConfirmed) return;
                 $.ajax({
-                    type: "post",
-                    url: "/book/send_to_save",
-                    data: { id: id, users_id: users_id, status: 12, position_id: position_id },
-                    dataType: "json",
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    success: function(response) {
-                        if (response.status) {
-                            Swal.fire("", "แทงเรื่องเรียบร้อยแล้ว", "success");
-                            setTimeout(() => { location.reload(); }, 1500);
-                        } else {
-                            Swal.fire("", "แทงเรื่องไม่สำเร็จ", "error");
-                        }
+                    type:"post", url:"/book/send_to_save",
+                    data:{ id:id, users_id:users_id, status:12, position_id:position_id },
+                    dataType:"json", headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    success:function(res){
+                        if (res.status){ Swal.fire("", "แทงเรื่องเรียบร้อยแล้ว", "success"); setTimeout(()=>location.reload(), 1200); }
+                        else { Swal.fire("", "แทงเรื่องไม่สำเร็จ", "error"); }
                     }
                 });
-            }
-        });
+            });
     });
 
-    $(document).ready(function() {
-        $('#manager-sinature').click(function(e) { e.preventDefault(); });
-        $('#insert-pages').click(function(e) { e.preventDefault(); $('#insert_tab').show(); });
-        $('#reject-book').click(function (e) {
+    $(document).ready(function(){
+        $('#manager-sinature').click(function(e){ e.preventDefault(); });
+        $('#insert-pages').click(function(e){ e.preventDefault(); $('#insert_tab').show(); });
+
+        $('#reject-book').click(function(e){
             e.preventDefault();
             Swal.fire({
-                title: "",
-                text: "ยืนยันการปฏิเสธหนังสือหรือไม่",
-                icon: "warning",
-                input: 'textarea',
-                inputPlaceholder: 'กรอกเหตุผลการปฏิเสธ33',
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                cancelButtonText: "ยกเลิก",
-                confirmButtonText: "ตกลง",
-                preConfirm: (note) => {
-                    if (!note) Swal.showValidationMessage('กรุณากรอกเหตุผล');
-                    return note;
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    var id = $('#id').val();
-                    var note = result.value;
-                    $.ajax({
-                        type: "post",
-                        url: "/book/reject",
-                        data: { id: id, note: note },
-                        dataType: "json",
-                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                        success: function (response) {
-                            if (response.status) {
-                                Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
-                                setTimeout(() => { location.reload(); }, 1500);
-                            } else {
-                                Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error");
-                            }
-                        }
-                    });
-                }
+                title:"", text:"ยืนยันการปฏิเสธหนังสือหรือไม่", icon:"warning",
+                input:'textarea', inputPlaceholder:'กรอกเหตุผลการปฏิเสธ',
+                showCancelButton:true, confirmButtonColor:"#3085d6", cancelButtonColor:"#d33",
+                cancelButtonText:"ยกเลิก", confirmButtonText:"ตกลง",
+                preConfirm:(note)=>{ if(!note) Swal.showValidationMessage('กรุณากรอกเหตุผล'); return note; }
+            }).then((r)=>{
+                if (!r.isConfirmed) return;
+                $.ajax({
+                    type:"post", url:"/book/reject",
+                    data:{ id: $('#id').val(), note: r.value },
+                    dataType:"json", headers:{ 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    success:function(res){
+                        if (res.status){ Swal.fire("", "ปฏิเสธเรียบร้อย", "success"); setTimeout(()=>location.reload(), 1200); }
+                        else { Swal.fire("", "ปฏิเสธไม่สำเร็จ", "error"); }
+                    }
+                });
             });
         });
 
-        async function createAndRenderPDF() {
-            const pdfDoc = await PDFLib.PDFDocument.create();
-            pdfDoc.addPage([600, 800]);
+        // preview insert (ถ้ามี)
+        async function createAndRenderPDF(){
+            const pdfDoc = await PDFLib.PDFDocument.create(); pdfDoc.addPage([600,800]);
             const pdfBytes = await pdfDoc.save();
-
             const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-            loadingTask.promise.then(pdf => pdf.getPage(1))
-                .then(page => {
-                    const scale = 1.5;
-                    const viewport = page.getViewport({ scale });
-                    const c = document.getElementById("pdf-render-insert");
-                    if (!c) return; // กันกรณีไม่มี insert canvas
-                    const context = c.getContext("2d");
-                    c.width = viewport.width;
-                    c.height = viewport.height;
-                    const renderContext = { canvasContext: context, viewport: viewport };
-                    return page.render(renderContext).promise;
-                }).catch(error => console.error("Error rendering PDF:", error));
+            loadingTask.promise.then(pdf=>pdf.getPage(1)).then(page=>{
+                const scale = 1.5, viewport = page.getViewport({scale});
+                const c = document.getElementById("pdf-render-insert"); if (!c) return;
+                const ctx = c.getContext("2d"); c.width=viewport.width; c.height=viewport.height;
+                return page.render({ canvasContext: ctx, viewport }).promise;
+            }).catch(err=>console.error("Error rendering PDF:", err));
         }
-        // เรียกได้เฉพาะหน้าที่มี insert preview
-        if (document.getElementById("pdf-render-insert")) {
-            createAndRenderPDF();
-        }
+        if (document.getElementById("pdf-render-insert")) createAndRenderPDF();
     });
 </script>
 @endsection
