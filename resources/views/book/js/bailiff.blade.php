@@ -356,32 +356,7 @@ function redrawSignatureBoxes() {
         }
     });
 
-                        var hasImage = checkedValues.includes('4');
-    if (hasImage) {
-        var imageBox = signatureCoordinates.imageBox;
-        markCtx.save();
-        markCtx.strokeStyle = 'green';
-        markCtx.lineWidth = 0.5;
-        markCtx.strokeRect(imageBox.startX, imageBox.startY, imageBox.endX - imageBox.startX, imageBox.endY - imageBox.startY);
-        markCtx.fillStyle = '#fff';
-        markCtx.strokeStyle = '#28a745';
-        markCtx.lineWidth = 2;
-        markCtx.fillRect(imageBox.endX - resizeHandleSize, imageBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-        markCtx.strokeRect(imageBox.endX - resizeHandleSize, imageBox.endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-        markCtx.restore();
-
-        var imgWidth = imageBox.endX - imageBox.startX;
-        var imgHeight = imageBox.endY - imageBox.startY;
-        if (signatureImgLoaded) {
-            markCtx.drawImage(signatureImg, imageBox.startX, imageBox.startY, imgWidth, imgHeight);
-            imgData = {
-                x: imageBox.startX,
-                y: imageBox.startY,
-                width: imgWidth,
-                height: imgHeight
-            };
-        }
-    }
+       
 }
 
 function isOnResizeHandle(mouseX, mouseY, box) {
@@ -401,13 +376,12 @@ function isInBox(mouseX, mouseY, box) {
 function getActiveBox(mouseX, mouseY) {
     var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
     var hasImage = checkedValues.includes('4');
-    if (isInBox(mouseX, mouseY, signatureCoordinates.bottomBox)) {
-        return signatureCoordinates.bottomBox;
-    } else if (hasImage && isInBox(mouseX, mouseY, signatureCoordinates.imageBox)) {
+  if (hasImage && isInBox(mouseX, mouseY, signatureCoordinates.imageBox)) {
         return signatureCoordinates.imageBox;
     } else if (isInBox(mouseX, mouseY, signatureCoordinates.textBox)) {
         return signatureCoordinates.textBox;
-    }
+        } else if (isInBox(mouseX, mouseY, signatureCoordinates.bottomBox)) {
+        return signatureCoordinates.bottomBox;
     return null;
 }
 
@@ -418,8 +392,8 @@ markCanvas.addEventListener('mousemove', function (e) {
     var checkedValues = $('input[type="checkbox"]:checked').map(function () { return $(this).val(); }).get();
     var hasImage = checkedValues.includes('4');
     if (isOnResizeHandle(x, y, signatureCoordinates.textBox) ||
-        isOnResizeHandle(x, y, signatureCoordinates.bottomBox) ||
-        (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox))) {
+       (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox)) ||
+        isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
         markCanvas.style.cursor = 'se-resize';
     } else if (getActiveBox(x, y)) {
         markCanvas.style.cursor = 'move';
@@ -440,15 +414,15 @@ markCanvas.onmousedown = function (e) {
         e.preventDefault();
         window.addEventListener('mousemove', onResizeMove);
         window.addEventListener('mouseup', onResizeEnd);
-    } else if (isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
-        isResizing = true;
-        activeBox = signatureCoordinates.bottomBox;
-        e.preventDefault();
-        window.addEventListener('mousemove', onResizeMove);
-        window.addEventListener('mouseup', onResizeEnd);
     } else if (hasImage && isOnResizeHandle(x, y, signatureCoordinates.imageBox)) {
         isResizing = true;
         activeBox = signatureCoordinates.imageBox;
+        e.preventDefault();
+        window.addEventListener('mousemove', onResizeMove);
+        window.addEventListener('mouseup', onResizeEnd);
+     } else if (isOnResizeHandle(x, y, signatureCoordinates.bottomBox)) {
+        isResizing = true;
+        activeBox = signatureCoordinates.bottomBox;
         e.preventDefault();
         window.addEventListener('mousemove', onResizeMove);
         window.addEventListener('mouseup', onResizeEnd);
