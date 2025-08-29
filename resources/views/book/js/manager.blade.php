@@ -617,6 +617,14 @@
         });
     });
 
+    // Allow pressing Enter in the search box to trigger search
+    $('#inputSearch').on('keydown', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            $('#search_btn').click();
+        }
+    });
+
     $('#manager-save').click(function(e) {
         e.preventDefault();
         var id = $('#id').val();

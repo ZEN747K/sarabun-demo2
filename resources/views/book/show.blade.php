@@ -68,7 +68,11 @@
             <div class="col-4">
                 <div class="input-group mb-3">
                     <input type="text" id="inputSearch" class="form-control border-dark" placeholder="ค้นหา">
-                    <button class="btn btn-outline-dark" type="button" id="search_btn">Button</button>
+                    <button class="btn btn-outline-dark" type="button" id="search_btn">ค้นหา</button>
+                    <a href="{{ route('book.show') }}" class="btn btn-outline-primary ms-2" id="btn-all-docs" style="white-space: nowrap;">
+                        <span style="display:block; line-height: 1; font-size: 12px;">จำนวนเอกสารทั้งหมด</span>
+                        <span style="font-weight:700; font-size:18px;">{{ $book_count ?? 0 }} ฉบับ</span>
+                    </a>
                 </div>
             </div>
             <div class="col-8">
