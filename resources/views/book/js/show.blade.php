@@ -14,8 +14,12 @@
     var pdfContainer = document.getElementById('pdf-container');
     var browseBtn = document.getElementById('browse-btn');
     var editMode = false;
+    // Guard against overlapping PDF loads (double-clicks / rapid clicks)
+    var pdfLoadSeq = 0;
 
     function pdf(url) {
+        // Token to ensure only the latest invocation updates the UI
+        const thisLoad = ++pdfLoadSeq;
         var pdfDoc = null,
             pageNum = 1,
             pageRendering = false,
@@ -29,10 +33,13 @@
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
 
-        // Clear any existing page options and handlers so navigating
-        // between documents doesn't duplicate entries or events.
-        selectPage.innerHTML = '';
-        selectPage.onchange = null;
+        // Replace the select element with a fresh clone to remove
+        // any previously attached event listeners and options.
+        if (selectPage) {
+            const cleanSelect = selectPage.cloneNode(false); // no children, no listeners
+            selectPage.parentNode.replaceChild(cleanSelect, selectPage);
+            selectPage = cleanSelect;
+        }
 
         
 
@@ -107,6 +114,8 @@
             withCredentials: true,
             disableRange: true
         }).promise.then(function(pdfDoc_) {
+            // If a newer load started, ignore this outdated result
+            if (thisLoad !== pdfLoadSeq) return;
             pdfDoc = pdfDoc_;
             for (let i = 1; i <= pdfDoc.numPages; i++) {
                 let option = document.createElement('option');

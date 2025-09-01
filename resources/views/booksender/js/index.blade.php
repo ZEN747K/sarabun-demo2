@@ -7,8 +7,25 @@
     const uploadArea = document.getElementById('upload-area');
     const pdfContainer = document.getElementById('pdf-container');
     const browseBtn = document.getElementById('browse-btn');
+    const clearBtn = document.getElementById('clear-btn');
 
     browseBtn.addEventListener('click', () => fileInput.click());
+    // Clear selected file and reset UI
+    function clearFileSelection() {
+        try { fileInput.value = ''; } catch (e) {}
+        if (pdfContainer) {
+            pdfContainer.innerHTML = '';
+            pdfContainer.classList.add('hidden');
+        }
+        if (uploadArea) {
+            uploadArea.classList.remove('dragover');
+            uploadArea.style.opacity = '1';
+            uploadArea.style.position = 'relative';
+        }
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() { clearFileSelection(); });
+    }
     fileInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
         console.log(file);

@@ -10,6 +10,7 @@
     var selectPageTable = document.getElementById('page-select-card');
     var pageTotal = '{{$totalPages}}';
     var pageNumTalbe = 1;
+    var pdfLoadSeq = 0;
 
     var imgData = null;
     // Preload signature image and track load state
@@ -21,6 +22,7 @@
     var signatureCoordinates = null;
 
     function pdf(url) {
+        const thisLoad = ++pdfLoadSeq;
         var pdfDoc = null,
             pageNum = 1,
             pageRendering = false,
@@ -33,6 +35,13 @@
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
+
+        // Reset page selector to avoid duplicated options/listeners
+        if (selectPage) {
+            const cleanSelect = selectPage.cloneNode(false);
+            selectPage.parentNode.replaceChild(cleanSelect, selectPage);
+            selectPage = cleanSelect;
+        }
 
         document.getElementById('manager-save').disabled = true;
 
@@ -88,6 +97,7 @@
         }
 
         pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+            if (thisLoad !== pdfLoadSeq) return; // stale load, ignore
             pdfDoc = pdfDoc_;
             if (selectPage) {
                 for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -101,8 +111,8 @@
             document.getElementById('manager-sinature').disabled = false;
         });
 
-        document.getElementById('next').addEventListener('click', onNextPage);
-        document.getElementById('prev').addEventListener('click', onPrevPage);
+        document.getElementById('next').onclick = onNextPage;
+        document.getElementById('prev').onclick = onPrevPage;
 
         function drawMarkSignature(startX, startY, endX, endY, checkedValues) {
             var markCanvasIns = document.getElementById('mark-layer-insert');

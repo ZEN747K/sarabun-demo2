@@ -12,6 +12,7 @@
     var selectPageTable = document.getElementById('page-select-card');
     var pageTotal = '{{$totalPages}}';
     var pageNumTalbe = 1;
+    var pdfLoadSeq = 0;
 
     var imgData = null;
 
@@ -34,6 +35,7 @@
     var signatureCoordinates = null;
 
     function pdf(url) {
+        const thisLoad = ++pdfLoadSeq;
         var pdfDoc = null,
             pageNum = 1,
             pageRendering = false,
@@ -44,6 +46,13 @@
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
             selectPage = document.getElementById('page-select');
+
+        // Replace select to clear options and previous listeners
+        if (selectPage) {
+            const cleanSelect = selectPage.cloneNode(false);
+            selectPage.parentNode.replaceChild(cleanSelect, selectPage);
+            selectPage = cleanSelect;
+        }
 
         document.getElementById('manager-save').disabled = true;
 
@@ -78,9 +87,9 @@
         }
 
         pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+            if (thisLoad !== pdfLoadSeq) return;
             pdfDoc = pdfDoc_;
             if (selectPage) {
-                while (selectPage.firstChild) selectPage.removeChild(selectPage.firstChild);
                 for (let i=1;i<=pdfDoc.numPages;i++){
                     let op = document.createElement('option');
                     op.value=i; op.textContent=i; selectPage.appendChild(op);
@@ -93,8 +102,8 @@
 
         var btnNext = document.getElementById('next');
         var btnPrev = document.getElementById('prev');
-        if (btnNext) btnNext.addEventListener('click', onNextPage);
-        if (btnPrev) btnPrev.addEventListener('click', onPrevPage);
+        if (btnNext) btnNext.onclick = onNextPage;
+        if (btnPrev) btnPrev.onclick = onPrevPage;
 
         function drawTextHeaderSignature(type, cx, y, text){
             var main = getCanvasOrNull('mark-layer'); if (!main) return;

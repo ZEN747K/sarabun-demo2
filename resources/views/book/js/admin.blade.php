@@ -13,6 +13,8 @@
   var selectPageTable = document.getElementById('page-select-card');
   var pageTotal = '{{$totalPages}}';
   var pageNumTalbe = 1;
+  // Prevent duplicate UI updates from overlapping loads
+  var pdfLoadSeq = 0;
 
   // รูปลายเซ็น
   var imgData = null;
@@ -26,6 +28,7 @@
   var signatureCoordinates = null;  // สำหรับกล่องลายเซ็น (text / image / bottom)
 
   function pdf(url) {
+    const thisLoad = ++pdfLoadSeq;
     var pdfDoc = null,
         pageNum = 1,
         pageRendering = false,
@@ -38,6 +41,13 @@
         markCanvas = document.getElementById('mark-layer'),
         markCtx = markCanvas.getContext('2d'),
         selectPage = document.getElementById('page-select');
+
+    // Reset page select by replacing node to remove options and old listeners
+    if (selectPage) {
+      const cleanSelect = selectPage.cloneNode(false);
+      selectPage.parentNode.replaceChild(cleanSelect, selectPage);
+      selectPage = cleanSelect;
+    }
 
     document.getElementById('add-stamp').disabled = true;
 
@@ -86,6 +96,7 @@
     });
 
     pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      if (thisLoad !== pdfLoadSeq) return; // stale load
       pdfDoc = pdfDoc_;
       for (let i = 1; i <= pdfDoc.numPages; i++) {
         let option = document.createElement('option');
@@ -96,8 +107,9 @@
       document.getElementById('add-stamp').disabled = false;
     });
 
-    document.getElementById('next').addEventListener('click', onNextPage);
-    document.getElementById('prev').addEventListener('click', onPrevPage);
+    // overwrite instead of stacking listeners
+    document.getElementById('next').onclick = onNextPage;
+    document.getElementById('prev').onclick = onPrevPage;
 
     // ==========================
     // ปุ่ม Add Stamp (แอดมิน)

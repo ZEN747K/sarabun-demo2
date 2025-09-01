@@ -222,13 +222,18 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-12 col-md-12 col-lg-7" id="uploadDiv" style="height:800px">
-            <div id="upload-area">
+        <div class="col-sm-12 col-md-12 col-lg-7" id="uploadDiv" style="height:800px; position: relative;">
+            <div class="upload-actions d-flex justify-content-end mb-2">
+                <button type="button" id="clear-btn" class="btn btn-outline-danger">ยกเลิกไฟล์</button>
+            </div>
+            <div id="upload-area" style="position: relative;">
                 <div class="upload-container">
                     <img src="template/icon/upload.png" alt="Cloud Upload Icon" class="upload-icon">
                     <input type="file" id="file-input" name="file-input" style="opacity: 0; position: absolute;" accept="application/pdf">
                     <p>DRAG & DROP FILE HERE OR</p>
-                    <button type="button" id="browse-btn" class="btn btn-outline-info">Browse files</button>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" id="browse-btn" class="btn btn-outline-info">Browse files</button>
+                    </div>
                 </div>
             </div>
             <div id="pdf-container" class="hidden" style="overflow-y: scroll; height: 800px;"></div>
