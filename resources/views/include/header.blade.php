@@ -3,8 +3,8 @@
   .dropdown-user-profile .pc-h-dropdown{ max-width: 480px; }
   .dropdown-user-profile .list-group{ max-height: 360px; overflow-y: auto; }
   .dropdown-user-profile .list-group-item{ white-space: normal; word-break: break-word; overflow-wrap: anywhere; line-height: 1.35; }
-  .dropdown-user-profile .user-role{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
-  .dropdown-user-profile .role-text{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
+  .dropdown-user-profile .user-role{ display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
+  .dropdown-user-profile .role-text{ display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
   .dropdown-user-profile .dropdown-header .flex-grow-1{ min-width:0; padding-right:48px; }
   .dropdown-user-profile .dropdown-header .logout-wrap{ flex-shrink:0; margin-left:8px; align-self:flex-start; }
 </style>

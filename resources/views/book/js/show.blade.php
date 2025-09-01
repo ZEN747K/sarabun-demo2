@@ -200,18 +200,14 @@
                 var scaleW = boxW / defaultWidth;
                 var scaleH = boxH / defaultHeight;
                 var scale = Math.min(scaleW, scaleH);
-                // Minimum scale = 0.5, Maximum scale = 2.5
                 scale = Math.max(0.5, Math.min(2.5, scale));
-                // Draw the box using current coordinates (do not overwrite endX/endY)
                 drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
-                // Draw text with scaled font and position
                 drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลพระอาจารย์');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 55 * scale, 'รับที่..........................................................');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 80 * scale, 'วันที่.........เดือน......................พ.ศ.........');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 100 * scale, 'เวลา......................................................น.');
             }
 
-            // Helper: check if mouse is on resize handle (bottom-right corner)
             function isOnResizeHandle(mouseX, mouseY) {
                 return (
                     mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
@@ -944,7 +940,6 @@
             showCancelButton: true,
             cancelButtonText: `ยกเลิก`,
             preConfirm: () => {
-                // ดึงค่าที่เลือกจาก Select2
                 const selectedValue = $('#select_position_id').val();
                 if (!selectedValue) {
                     Swal.showValidationMessage('ท่านยังไม่ได้เลือกหน่วยงาน');
@@ -990,7 +985,7 @@
             cancelBtn.id = 'cancel-stamp-btn';
             cancelBtn.className = 'btn btn-danger btn-sm';
             cancelBtn.innerText = 'x';
-            cancelBtn.style.position = 'fixed'; // เปลี่ยนเป็น fixed
+            cancelBtn.style.position = 'fixed';
             cancelBtn.style.zIndex = 1000;
             cancelBtn.onclick = function() {
                 var markCtx = markCanvas.getContext('2d');
@@ -1005,7 +1000,7 @@
         // คำนวณตำแหน่งปุ่มจากตำแหน่งกล่องตราประทับบนจอจริง
         const rect = markCanvas.getBoundingClientRect();
         const btnLeft = rect.left + x;
-        const btnTop = rect.top + y - 40; // 40px เหนือกล่อง
+        const btnTop = rect.top + y - 40; 
         cancelBtn.style.left = btnLeft + 'px';
         cancelBtn.style.top = btnTop + 'px';
         cancelBtn.style.display = 'block';
@@ -1014,22 +1009,18 @@
         let cancelBtn = document.getElementById('cancel-stamp-btn');
         if (cancelBtn) cancelBtn.remove();
     }
-    // ====== Hide cancel button on page load and when no stamp box ======
     document.addEventListener('DOMContentLoaded', function() {
         hideCancelStampBtn();
     });
-    // ====== Hide cancel button when removeMarkListener is called ======
     const _oldRemoveMarkListener = removeMarkListener;
     removeMarkListener = function() {
         hideCancelStampBtn();
         _oldRemoveMarkListener.apply(this, arguments);
     };
 
-    // --- Resize logic for stamp box ---
     var isResizing = false;
     var resizeHandleSize = 16;
 
-    // Helper: check if mouse is on resize handle (bottom-right corner)
     function isOnResizeHandle(mouseX, mouseY) {
         return (
             mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
@@ -1037,7 +1028,6 @@
         );
     }
 
-    // Patch drawMark to draw resize handle
     function drawMark(startX, startY, endX, endY) {
         var markCanvas = document.getElementById('mark-layer');
         var markCtx = markCanvas.getContext('2d');
