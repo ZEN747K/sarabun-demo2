@@ -40,7 +40,8 @@
         pdfCtxInsert = pdfCanvasInsert.getContext('2d'),
         markCanvas = document.getElementById('mark-layer'),
         markCtx = markCanvas.getContext('2d'),
-        selectPage = document.getElementById('page-select');
+        selectPage = document.getElementById('page-select'),
+        additionalContainer = document.getElementById('pdf-additional');
 
     // Reset page select by replacing node to remove options and old listeners
     if (selectPage) {
@@ -48,6 +49,7 @@
       selectPage.parentNode.replaceChild(cleanSelect, selectPage);
       selectPage = cleanSelect;
     }
+    if (additionalContainer) additionalContainer.innerHTML = '';
 
     document.getElementById('add-stamp').disabled = true;
 
@@ -70,7 +72,7 @@
           }
         });
       });
-      selectPage.value = num;
+      if (selectPage) selectPage.value = num;
     }
 
     function queueRenderPage(num) {
@@ -88,28 +90,51 @@
       pageNum--; queueRenderPage(pageNum);
     }
 
-    selectPage.addEventListener('change', function() {
-      let selectedPage = parseInt(this.value);
-      if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
-        pageNum = selectedPage; queueRenderPage(selectedPage);
-      }
-    });
+    if (selectPage) {
+      selectPage.addEventListener('change', function() {
+        let selectedPage = parseInt(this.value);
+        if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
+          pageNum = selectedPage; queueRenderPage(selectedPage);
+        }
+      });
+    }
 
     pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
       if (thisLoad !== pdfLoadSeq) return; // stale load
       pdfDoc = pdfDoc_;
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        let option = document.createElement('option');
-        option.value = i; option.textContent = i;
-        selectPage.appendChild(option);
+      if (selectPage) {
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          let option = document.createElement('option');
+          option.value = i; option.textContent = i;
+          selectPage.appendChild(option);
+        }
       }
       renderPage(pageNum);
+      if (additionalContainer) {
+        for (let i = 2; i <= pdfDoc.numPages; i++) {
+          pdfDoc.getPage(i).then(function(page) {
+            const viewport = page.getViewport({ scale: scale });
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            wrapper.style.margin = '20px auto 0';
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            wrapper.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            page.render({ canvasContext: ctx, viewport: viewport });
+            additionalContainer.appendChild(wrapper);
+          });
+        }
+      }
       document.getElementById('add-stamp').disabled = false;
     });
 
     // overwrite instead of stacking listeners
-    document.getElementById('next').onclick = onNextPage;
-    document.getElementById('prev').onclick = onPrevPage;
+    var nextBtn = document.getElementById('next');
+    if (nextBtn) nextBtn.onclick = onNextPage;
+    var prevBtn = document.getElementById('prev');
+    if (prevBtn) prevBtn.onclick = onPrevPage;
 
     // ==========================
     // ปุ่ม Add Stamp (แอดมิน)
@@ -779,7 +804,7 @@
     document.getElementById('add-stamp').disabled  = false;
     document.getElementById('save-stamp').disabled = true;
     document.getElementById('send-save').disabled  = true;
-    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
     pdf(url);
     $('#id').val(id);
     $('#position_id').val(position_id);
@@ -853,7 +878,7 @@
       success:function(res){
         if(res.status===true){
           $('#box-card-item').empty();
-          $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+          $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
           res.book.forEach(el=>{
             var color = (el.type!=1)?'warning':'info';
             var text = '';
@@ -879,7 +904,7 @@
       success:function(res){
         if(res.status===true){
           $('#box-card-item').html('');
-          $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+          $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
           pageNumTalbe=1; pageTotal=res.totalPages;
           res.book.forEach(el=>{
             var color=(el.type!=1)?'warning':'info'; var text='';
@@ -909,7 +934,7 @@
     e.preventDefault();
     var id=$('#id').val(), positionX=$('#positionX').val(), positionY=$('#positionY').val();
     var positionPages=$('#positionPages').val();
-    var pages=$('#page-select').find(":selected").val();
+    var pages=1;
     if (id && positionX!=='' && positionY!==''){
       Swal.fire({title:"ยืนยันการลงบันทึกเวลา",showCancelButton:true,confirmButtonText:"ตกลง",cancelButtonText:"ยกเลิก",icon:'question'})
       .then((r)=>{
@@ -1003,7 +1028,7 @@
   $('#signature-save').click(function(e){
     e.preventDefault();
     var id=$('#id').val();
-    var pages=$('#page-select').find(":selected").val();
+    var pages=1;
     var positionPages=$('#positionPages').val();
     var text=$('#modal-text').val();
     var checkedValues=$('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get();

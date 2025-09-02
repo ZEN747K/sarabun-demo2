@@ -34,9 +34,12 @@
             pdfCtxInsert = pdfCanvasInsert.getContext('2d'),
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
-            selectPage = document.getElementById('page-select');
+            selectPage = document.getElementById('page-select'),
+            additionalContainer = document.getElementById('pdf-additional');
 
         document.getElementById('manager-save').disabled = true;
+        if (selectPage) selectPage.innerHTML = '';
+        if (additionalContainer) additionalContainer.innerHTML = '';
 
         function renderPage(num) {
             pageRendering = true;
@@ -60,33 +63,56 @@
                 });
             });
 
-            selectPage.value = num;
+            if (selectPage) selectPage.value = num;
         }
 
         function queueRenderPage(num){ pageRendering ? pageNumPending = num : renderPage(num); }
         function onNextPage(){ if (pageNum >= pdfDoc.numPages) return; pageNum++; queueRenderPage(pageNum); }
         function onPrevPage(){ if (pageNum <= 1) return; pageNum--; queueRenderPage(pageNum); }
 
-        selectPage.addEventListener('change', function() {
-            let selectedPage = parseInt(this.value);
-            if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
-                pageNum = selectedPage; queueRenderPage(selectedPage);
-            }
-        });
+        if (selectPage) {
+            selectPage.addEventListener('change', function() {
+                let selectedPage = parseInt(this.value);
+                if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
+                    pageNum = selectedPage; queueRenderPage(selectedPage);
+                }
+            });
+        }
 
         pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
             pdfDoc = pdfDoc_;
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                let option = document.createElement('option');
-                option.value = i; option.textContent = i;
-                selectPage.appendChild(option);
+            if (selectPage) {
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    let option = document.createElement('option');
+                    option.value = i; option.textContent = i;
+                    selectPage.appendChild(option);
+                }
             }
             renderPage(pageNum);
+            if (additionalContainer) {
+                for (let i = 2; i <= pdfDoc.numPages; i++) {
+                    pdfDoc.getPage(i).then(function(page) {
+                        const viewport = page.getViewport({ scale: scale });
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.margin = '20px auto 0';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        wrapper.appendChild(canvas);
+                        const ctx = canvas.getContext('2d');
+                        page.render({ canvasContext: ctx, viewport: viewport });
+                        additionalContainer.appendChild(wrapper);
+                    });
+                }
+            }
             document.getElementById('manager-sinature').disabled = false;
         });
 
-        document.getElementById('next').addEventListener('click', onNextPage);
-        document.getElementById('prev').addEventListener('click', onPrevPage);
+        var nextBtn = document.getElementById('next');
+        if (nextBtn) nextBtn.addEventListener('click', onNextPage);
+        var prevBtn = document.getElementById('prev');
+        if (prevBtn) prevBtn.addEventListener('click', onPrevPage);
 
         function drawTextHeaderSignature(type, startX, startY, text) {
             var markCanvas = document.getElementById('mark-layer');
@@ -404,7 +430,7 @@
         document.getElementById('manager-sinature').disabled = false;
         document.getElementById('save-stamp').disabled = true;
         document.getElementById('send-save').disabled = true;
-        $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+        $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
         pdf(url);
         $('#id').val(id);
         $('#position_id').val(position_id);
@@ -476,7 +502,7 @@
             success: function(response) {
                 if (!response.status) return;
                 $('#box-card-item').empty();
-                $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+                $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
                 response.book.forEach(element => {
                     var color = (element.type != 1) ? 'warning' : 'info';
                     var html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' + element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' + element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
@@ -502,7 +528,7 @@
             success: function(response) {
                 if (!response.status) return;
                 $('#box-card-item').html('');
-                $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+                $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
                 pageNumTalbe = 1;
                 pageTotal = response.totalPages;
                 response.book.forEach(element => {
@@ -532,7 +558,7 @@
         var position_id = $('#position_id').val();
 
         var positionPages = $('#positionPages').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = 1;
         var text = $('#modal-text').val();
         var checkedValues = $('input[type="checkbox"]:checked').map(function(){ return $(this).val(); }).get();
         var textBox = signatureCoordinates ? signatureCoordinates.textBox : null;

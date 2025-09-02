@@ -34,7 +34,8 @@
             pdfCtxInsert = pdfCanvasInsert ? pdfCanvasInsert.getContext('2d') : null,
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
-            selectPage = document.getElementById('page-select');
+            selectPage = document.getElementById('page-select'),
+            additionalContainer = document.getElementById('pdf-additional');
 
         // Reset page selector to avoid duplicated options/listeners
         if (selectPage) {
@@ -42,6 +43,7 @@
             selectPage.parentNode.replaceChild(cleanSelect, selectPage);
             selectPage = cleanSelect;
         }
+        if (additionalContainer) additionalContainer.innerHTML = '';
 
         document.getElementById('manager-save').disabled = true;
 
@@ -108,11 +110,30 @@
                 }
             }
             renderPage(pageNum);
+            if (additionalContainer) {
+                for (let i = 2; i <= pdfDoc.numPages; i++) {
+                    pdfDoc.getPage(i).then(function(page) {
+                        const viewport = page.getViewport({ scale: scale });
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.margin = '20px auto 0';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        wrapper.appendChild(canvas);
+                        const ctx = canvas.getContext('2d');
+                        page.render({ canvasContext: ctx, viewport: viewport });
+                        additionalContainer.appendChild(wrapper);
+                    });
+                }
+            }
             document.getElementById('manager-sinature').disabled = false;
         });
 
-        document.getElementById('next').onclick = onNextPage;
-        document.getElementById('prev').onclick = onPrevPage;
+        var nextBtn = document.getElementById('next');
+        if (nextBtn) nextBtn.onclick = onNextPage;
+        var prevBtn = document.getElementById('prev');
+        if (prevBtn) prevBtn.onclick = onPrevPage;
 
         function drawMarkSignature(startX, startY, endX, endY, checkedValues) {
             var markCanvasIns = document.getElementById('mark-layer-insert');
@@ -512,7 +533,7 @@
         document.getElementById('manager-sinature').disabled = false;
         document.getElementById('save-stamp').disabled = true;
         document.getElementById('send-save').disabled = true;
-        $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+        $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
         pdf(url);
         $('#id').val(id);
         $('#position_id').val(position_id);
@@ -623,7 +644,7 @@
             success: function(response) {
                 if (response.status == true) {
                     $('#box-card-item').empty();
-                    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+                    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
                     response.book.forEach(element => {
                         var color = (element.type != 1) ? 'warning' : 'info';
                         $html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' + element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' + element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
@@ -649,7 +670,7 @@
             success: function(response) {
                 if (response.status == true) {
                     $('#box-card-item').html('');
-                    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+                    $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div><div id="pdf-additional"></div>');
                     pageNumTalbe = 1;
                     pageTotal = response.totalPages;
                     response.book.forEach(element => {
@@ -679,7 +700,7 @@
         var id = $('#id').val();
 
         var positionPages = $('#positionPages').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = 1;
         var text = $('#modal-text').val();
         var checkedValues = $('input[type="checkbox"]:checked').map(function() { return $(this).val(); }).get();
         var textBox = signatureCoordinates ? signatureCoordinates.textBox : null;

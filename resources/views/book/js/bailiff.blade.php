@@ -45,7 +45,8 @@
             pdfCtx = pdfCanvas.getContext('2d'),
             markCanvas = document.getElementById('mark-layer'),
             markCtx = markCanvas.getContext('2d'),
-            selectPage = document.getElementById('page-select');
+            selectPage = document.getElementById('page-select'),
+            additionalContainer = document.getElementById('pdf-additional');
 
         // Replace select to clear options and previous listeners
         if (selectPage) {
@@ -53,6 +54,7 @@
             selectPage.parentNode.replaceChild(cleanSelect, selectPage);
             selectPage = cleanSelect;
         }
+        if (additionalContainer) additionalContainer.innerHTML = '';
 
         document.getElementById('manager-save').disabled = true;
 
@@ -96,6 +98,23 @@
                 }
             }
             renderPage(pageNum);
+            if (additionalContainer) {
+                for (let i=2;i<=pdfDoc.numPages;i++){
+                    pdfDoc.getPage(i).then(function(page){
+                        const viewport = page.getViewport({ scale: scale });
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.margin = '20px auto 0';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        wrapper.appendChild(canvas);
+                        const ctx = canvas.getContext('2d');
+                        page.render({ canvasContext: ctx, viewport: viewport });
+                        additionalContainer.appendChild(wrapper);
+                    });
+                }
+            }
             var btnSig = document.getElementById('manager-sinature');
             if (btnSig) btnSig.disabled = false;
         });
@@ -371,7 +390,8 @@
             '<div style="position: relative;">' +
                 '<canvas id="pdf-render"></canvas>' +
                 '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
-            '</div>'
+            '</div>' +
+            '<div id="pdf-additional"></div>'
         );
         pdf(url);
 
@@ -456,7 +476,8 @@
                     '<div style="position: relative;">' +
                         '<canvas id="pdf-render"></canvas>' +
                         '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
-                    '</div>'
+                    '</div>' +
+                    '<div id="pdf-additional"></div>'
                 );
                 response.book.forEach(el=>{
                     var color = (el.type!=1)?'warning':'info';
@@ -491,7 +512,8 @@
                     '<div style="position: relative;">' +
                         '<canvas id="pdf-render"></canvas>' +
                         '<canvas id="mark-layer" style="position:absolute;left:0;top:0;"></canvas>' +
-                    '</div>'
+                    '</div>' +
+                    '<div id="pdf-additional"></div>'
                 );
                 pageNumTalbe = 1; pageTotal = response.totalPages;
                 response.book.forEach(el=>{
@@ -522,7 +544,7 @@
         e.preventDefault();
         var id = $('#id').val(), position_id = $('#position_id').val();
         var positionPages = $('#positionPages').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = 1;
         var text = $('#modal-text').val();
         var checkedValues = $('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get();
         var textBox = signatureCoordinates ? signatureCoordinates.textBox : null;
