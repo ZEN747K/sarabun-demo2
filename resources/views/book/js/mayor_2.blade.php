@@ -210,7 +210,7 @@
 
                         // 2) ลายเซ็น (กรอบสีเขียว)
                         var hasImage = checkedValues.includes('4');
-                        if (hasImage) {
+                        if (false && hasImage) {
                             var imageBox = signatureCoordinates.imageBox;
                             markCtx.save();
                             markCtx.strokeStyle = 'green';
@@ -246,21 +246,38 @@
 
                         var bottomScale = Math.min((bottomBox.endX - bottomBox.startX) / 220, (bottomBox.endY - bottomBox.startY) / 80);
                         bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
+                        // Draw signature image inside bottomBox and then text below
+                        var baseY = bottomBox.startY + 25 * bottomScale;
+                        if (hasImage && signatureImgLoaded) {
+                            var innerPad = 8;
+                            var contentW = (bottomBox.endX - bottomBox.startX) - innerPad*2;
+                            var contentH = (bottomBox.endY - bottomBox.startY) - innerPad*2;
+                            var ar = 240/130;
+                            var maxImgW = contentW;
+                            var maxImgH = Math.max(30, contentH * 0.55);
+                            var imgW = maxImgW;
+                            var imgH = imgW / ar;
+                            if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * ar; }
+                            var imgX = bottomBox.startX + ((bottomBox.endX - bottomBox.startX) - imgW) / 2;
+                            var imgY = bottomBox.startY + innerPad;
+                            markCtx.drawImage(signatureImg, imgX, imgY, imgW, imgH);
+                            imgData = { x: imgX, y: imgY, width: imgW, height: imgH };
+                            baseY = imgY + imgH + 10;
+                        }
                         var i = 0;
                         checkedValues.forEach(function (element) {
-                            if (element != 4) {
-                                var checkbox_text = '';
-                                switch (element) {
-                                    case '1': checkbox_text = `({{$users->fullname}})`; break;
-                                    case '2': checkbox_text = `{{$permission_data->permission_name}}`; break;
-                                    case '3': checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`; break;
-                                }
-                                drawTextHeaderSignature((15 * bottomScale).toFixed(1) + 'px Sarabun',
-                                    (bottomBox.startX + bottomBox.endX) / 2,
-                                    bottomBox.startY + 25 * bottomScale + (20 * i * bottomScale),
-                                    checkbox_text);
-                                i++;
+                            if (element == 4) return;
+                            var checkbox_text = '';
+                            switch (element) {
+                                case '1': checkbox_text = `({{$users->fullname}})`; break;
+                                case '2': checkbox_text = `{{$permission_data->permission_name}}`; break;
+                                case '3': checkbox_text = `{{convertDateToThai(date("Y-m-d"))}}`; break;
                             }
+                            drawTextHeaderSignature((15 * bottomScale).toFixed(1) + 'px Sarabun',
+                                (bottomBox.startX + bottomBox.endX) / 2,
+                                baseY + (20 * i * bottomScale),
+                                checkbox_text);
+                            i++;
                         });
                     }
 
@@ -554,20 +571,28 @@
                     position_id: position_id
                 };
                 if (bottomBox) {
+                    var bbStartY = bottomBox.startY;
+                    if (imgData && checkedValues.includes('4')){
+                        bbStartY = imgData.y + imgData.height + 10;
+                    }
                     data.bottomBox = {
                         startX: bottomBox.startX,
-                        startY: bottomBox.startY,
+                        startY: bbStartY,
                         width: bottomBox.endX - bottomBox.startX,
-                        height: bottomBox.endY - bottomBox.startY
+                        height: Math.max(10, bottomBox.endY - bbStartY)
                     };
                 }
-                if (imageBox && checkedValues.includes('4')) {
-                    data.imageBox = {
-                        startX: imageBox.startX,
-                        startY: imageBox.startY,
-                        width: imageBox.endX - imageBox.startX,
-                        height: imageBox.endY - imageBox.startY
-                    };
+                if (checkedValues.includes('4')) {
+                    if (imgData) {
+                        data.imageBox = { startX: imgData.x, startY: imgData.y, width: imgData.width, height: imgData.height };
+                    } else if (imageBox) {
+                        data.imageBox = {
+                            startX: imageBox.startX,
+                            startY: imageBox.startY,
+                            width: imageBox.endX - imageBox.startX,
+                            height: imageBox.endY - imageBox.startY
+                        };
+                    }
                 }
 
                 $.ajax({

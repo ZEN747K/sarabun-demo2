@@ -383,7 +383,7 @@
 
               // กล่องกลาง (รูปเซ็น)
               var hasImage = checkedValues.includes('4');
-              if (hasImage) {
+              if (false && hasImage) {
                 var imageBox = signatureCoordinates.imageBox;
                 markCtx.save();
                 markCtx.strokeStyle = 'green'; markCtx.lineWidth = 0.5;
@@ -413,6 +413,24 @@
 
               var bottomScale = Math.min((bottomBox.endX - bottomBox.startX)/220, (bottomBox.endY - bottomBox.startY)/80);
               bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
+              // Draw signature inside bottomBox then details below
+              var baseY = bottomBox.startY + 25*bottomScale;
+              if (hasImage && signatureImgLoaded) {
+                var innerPad = 8;
+                var contentW = (bottomBox.endX - bottomBox.startX) - innerPad*2;
+                var contentH = (bottomBox.endY - bottomBox.startY) - innerPad*2;
+                var ar = 240/130;
+                var maxImgW = contentW;
+                var maxImgH = Math.max(30, contentH * 0.55);
+                var imgW = maxImgW;
+                var imgH = imgW / ar;
+                if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * ar; }
+                var imgX = bottomBox.startX + ((bottomBox.endX - bottomBox.startX) - imgW)/2;
+                var imgY = bottomBox.startY + innerPad;
+                markCtx.drawImage(signatureImg, imgX, imgY, imgW, imgH);
+                imgData = { x: imgX, y: imgY, width: imgW, height: imgH };
+                baseY = imgY + imgH + 10;
+              }
 
               var i = 0;
               checkedValues.forEach(function (element) {
@@ -425,7 +443,7 @@
                 }
                 drawTextHeaderSignature((15*bottomScale).toFixed(1)+'px Sarabun',
                   (bottomBox.startX + bottomBox.endX)/2,
-                  bottomBox.startY + 25*bottomScale + (20*i*bottomScale),
+                  baseY + (20*i*bottomScale),
                   t);
                 i++;
               });
@@ -437,7 +455,7 @@
               var checked=$('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get();
               var hasImage=checked.includes('4');
               if(isInBox(x,y,signatureCoordinates.bottomBox)) return signatureCoordinates.bottomBox;
-              if(hasImage && isInBox(x,y,signatureCoordinates.imageBox)) return signatureCoordinates.imageBox;
+              // imageBox disabled; signature image drawn inside bottomBox
               if(isInBox(x,y,signatureCoordinates.textBox)) return signatureCoordinates.textBox;
               return null;
             }
@@ -447,8 +465,7 @@
               var checked=$('input[type="checkbox"]:checked').map(function(){return $(this).val();}).get();
               var hasImage=checked.includes('4');
               if (isOnResizeHandle(x,y,signatureCoordinates.textBox) ||
-                  isOnResizeHandle(x,y,signatureCoordinates.bottomBox) ||
-                  (hasImage && isOnResizeHandle(x,y,signatureCoordinates.imageBox))) {
+                  isOnResizeHandle(x,y,signatureCoordinates.bottomBox)) {
                 markCanvas.style.cursor='se-resize';
               } else if (getActiveBox(x,y)) {
                 markCanvas.style.cursor='move';
@@ -466,8 +483,6 @@
                 isResizing=true; activeBox=signatureCoordinates.textBox;
               } else if (isOnResizeHandle(x,y,signatureCoordinates.bottomBox)) {
                 isResizing=true; activeBox=signatureCoordinates.bottomBox;
-              } else if (hasImage && isOnResizeHandle(x,y,signatureCoordinates.imageBox)) {
-                isResizing=true; activeBox=signatureCoordinates.imageBox;
               } else {
                 activeBox=getActiveBox(x,y);
                 if (activeBox) {
@@ -988,18 +1003,27 @@
           id, positionX, positionY, positionPages, pages, text, checkedValues, width, height
         };
         if (bottomBox){
+          var bbStartY = bottomBox.startY;
+          if (imgData && checkedValues.includes('4')){
+            bbStartY = imgData.y + imgData.height + 10;
+          }
           payload.bottomBox = {
-            startX: bottomBox.startX, startY: bottomBox.startY,
+            startX: bottomBox.startX,
+            startY: bbStartY,
             width:  bottomBox.endX - bottomBox.startX,
-            height: bottomBox.endY - bottomBox.startY
+            height: Math.max(10, bottomBox.endY - bbStartY)
           };
         }
-        if (imageBox && checkedValues.includes('4')){
-          payload.imageBox = {
-            startX: imageBox.startX, startY: imageBox.startY,
-            width:  imageBox.endX - imageBox.startX,
-            height: imageBox.endY - imageBox.startY
-          };
+        if (checkedValues.includes('4')){
+          if (imgData){
+            payload.imageBox = { startX: imgData.x, startY: imgData.y, width: imgData.width, height: imgData.height };
+          } else if (imageBox){
+            payload.imageBox = {
+              startX: imageBox.startX, startY: imageBox.startY,
+              width:  imageBox.endX - imageBox.startX,
+              height: imageBox.endY - imageBox.startY
+            };
+          }
         }
         $.ajax({
           type:'post', url:'/book/signature_stamp', data:payload, dataType:'json', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'},

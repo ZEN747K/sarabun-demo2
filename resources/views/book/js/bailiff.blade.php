@@ -219,7 +219,7 @@
                             topText);
 
                         // ===== 2) วาดกรอบ/รูป "ลายเซ็น" กล่องที่สอง =====
-                        if (checkedValues.includes('4') && signatureImgLoaded) {
+                        if (false && checkedValues.includes('4') && signatureImgLoaded) {
                             var imgBox = signatureCoordinates.imageBox;
                             var w = Math.max(40, imgBox.endX - imgBox.startX);
                             var h = Math.max(30, imgBox.endY - imgBox.startY);
@@ -248,6 +248,24 @@
 
                         var bottomScale = Math.min((bottomBox.endX-bottomBox.startX)/220, (bottomBox.endY-bottomBox.startY)/80);
                         bottomScale = Math.max(0.5, Math.min(2.5, bottomScale));
+                        // Draw signature inside bottom box then details below
+                        var baseY = bottomBox.startY + 25*bottomScale;
+                        if (checkedValues.includes('4') && signatureImgLoaded) {
+                            var innerPad = 8;
+                            var contentW = (bottomBox.endX - bottomBox.startX) - innerPad*2;
+                            var contentH = (bottomBox.endY - bottomBox.startY) - innerPad*2;
+                            var ar = 240/130;
+                            var maxImgW = contentW;
+                            var maxImgH = Math.max(30, contentH * 0.55);
+                            var imgW = maxImgW;
+                            var imgH = imgW / ar;
+                            if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * ar; }
+                            var imgX = bottomBox.startX + ((bottomBox.endX - bottomBox.startX) - imgW)/2;
+                            var imgY = bottomBox.startY + innerPad;
+                            markCtx.drawImage(signatureImg, imgX, imgY, imgW, imgH);
+                            imgData = { x: imgX, y: imgY, width: imgW, height: imgH };
+                            baseY = imgY + imgH + 10;
+                        }
                         var i = 0;
                         checkedValues.forEach(function (element) {
                             if (element == '4') return; // ข้ามลายเซ็น
@@ -259,7 +277,7 @@
                             }
                             drawTextHeaderSignature((15*bottomScale).toFixed(1)+'px Sarabun',
                                 (bottomBox.startX+bottomBox.endX)/2,
-                                bottomBox.startY + 25*bottomScale + (20*i*bottomScale),
+                                baseY + (20*i*bottomScale),
                                 line);
                             i++;
                         });
@@ -504,18 +522,27 @@
                     position_id: position_id
                 };
                 if (bottomBox){
+                    var bbStartY = bottomBox.startY;
+                    if (imgData && checkedValues.includes('4')){
+                        bbStartY = imgData.y + imgData.height + 10; // text region starts below image
+                    }
                     data.bottomBox = {
-                        startX: bottomBox.startX, startY: bottomBox.startY,
+                        startX: bottomBox.startX,
+                        startY: bbStartY,
                         width: bottomBox.endX - bottomBox.startX,
-                        height: bottomBox.endY - bottomBox.startY
+                        height: Math.max(10, bottomBox.endY - bbStartY)
                     };
                 }
-                if (imageBox && checkedValues.includes('4')){
-                    data.imageBox = {
-                        startX: imageBox.startX, startY: imageBox.startY,
-                        width: imageBox.endX - imageBox.startX,
-                        height: imageBox.endY - imageBox.startY
-                    };
+                if (checkedValues.includes('4')){
+                    if (imgData){
+                        data.imageBox = { startX: imgData.x, startY: imgData.y, width: imgData.width, height: imgData.height };
+                    } else if (imageBox) {
+                        data.imageBox = {
+                            startX: imageBox.startX, startY: imageBox.startY,
+                            width: imageBox.endX - imageBox.startX,
+                            height: imageBox.endY - imageBox.startY
+                        };
+                    }
                 }
                 $.ajax({
                     type:"post", url:"/book/manager_stamp", data:data, dataType:"json",
