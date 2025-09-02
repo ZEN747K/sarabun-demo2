@@ -526,11 +526,19 @@
                     if (imgData && checkedValues.includes('4')){
                         bbStartY = imgData.y + imgData.height + 10; // text region starts below image
                     }
+                    // Enlarge to match preview text scale (x2) while keeping center aligned
+                    var factor = 2;
+                    var origW = (bottomBox.endX - bottomBox.startX);
+                    var origH = Math.max(10, bottomBox.endY - bbStartY);
+                    var newW = origW * factor;
+                    var newH = origH * factor;
+                    var centerX = bottomBox.startX + origW/2;
+                    var newStartX = centerX - newW/2;
                     data.bottomBox = {
-                        startX: bottomBox.startX,
+                        startX: newStartX,
                         startY: bbStartY,
-                        width: bottomBox.endX - bottomBox.startX,
-                        height: Math.max(10, bottomBox.endY - bbStartY)
+                        width: newW,
+                        height: newH
                     };
                 }
                 if (checkedValues.includes('4')){
