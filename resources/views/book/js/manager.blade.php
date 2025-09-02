@@ -564,6 +564,27 @@
         }
     }
 
+    // ========== Print helpers for list cards ==========
+    function printPdf(url){
+        try{
+            var w=window.open(url,'_blank'); if(!w) return; var fired=false; var doPrint=function(){ if(fired) return; fired=true; try{ w.focus(); w.print(); }catch(e){} };
+            w.addEventListener && w.addEventListener('load', doPrint);
+            setTimeout(doPrint, 1500);
+        }catch(e){}
+    }
+    function addPrintButtons(){
+        try{
+            $('#box-card-item .card .card-body .row .col-3.fw-bold').each(function(){
+                if($(this).find('button._printBtn').length) return;
+                var parent=$(this).closest('a'); var oc=parent.attr('onclick')||''; var m=oc.match(/openPdf\('([^']+)'/); var pdf=m?m[1]:null; if(!pdf) return;
+                var btn=$('<button type="button" class="btn btn-sm btn-outline-secondary ms-2 _printBtn"><i class="fa fa-print"></i></button>');
+                btn.on('click', function(ev){ ev.stopPropagation(); printPdf(pdf); });
+                $(this).append(btn);
+            });
+        }catch(e){}
+    }
+    setInterval(addPrintButtons, 1200);
+
     selectPageTable.addEventListener('change', function() {
         let selectedPage = parseInt(this.value);
         ajaxTable(selectedPage);
