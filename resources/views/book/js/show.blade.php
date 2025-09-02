@@ -3,8 +3,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
     @include('book.js.constants')
+
     var permission_id = '{{$permission_id}}';
     var selectPageTable = document.getElementById('page-select-card');
     var pageTotal = '{{$totalPages}}';
@@ -14,42 +16,42 @@
     var pdfContainer = document.getElementById('pdf-container');
     var browseBtn = document.getElementById('browse-btn');
     var editMode = false;
-    // Guard against overlapping PDF loads (double-clicks / rapid clicks)
+
+    // กันโหลด PDF ซ้อนกันโดยไม่ตั้งใจ
     var pdfLoadSeq = 0;
 
+    // ==============================
+    // โหลดและแสดง PDF
+    // ==============================
     function pdf(url) {
-        // Token to ensure only the latest invocation updates the UI
         const thisLoad = ++pdfLoadSeq;
+
         var pdfDoc = null,
             pageNum = 1,
-            pageRendering = false,
-            pageNumPending = null,
             scale = 1.5,
+
             pdfCanvas = document.getElementById('pdf-render'),
             pdfCanvasInsert = document.getElementById('pdf-render-insert'),
-            pdfCtx = pdfCanvas.getContext('2d'),
-            pdfCtxInsert = pdfCanvasInsert.getContext('2d'),
             markCanvas = document.getElementById('mark-layer'),
-            markCtx = markCanvas.getContext('2d'),
-            selectPage = document.getElementById('page-select');
+            additionalContainer = document.getElementById('pdf-additional');
 
-        // Replace the select element with a fresh clone to remove
-        // any previously attached event listeners and options.
-        if (selectPage) {
-            const cleanSelect = selectPage.cloneNode(false); // no children, no listeners
-            selectPage.parentNode.replaceChild(cleanSelect, selectPage);
-            selectPage = cleanSelect;
+        if (!pdfCanvas || !markCanvas) {
+            // ยังไม่มี canvas → ไม่ทำต่อ
+            return;
         }
 
-        
+        var pdfCtx = pdfCanvas.getContext('2d');
+        var markCtx = markCanvas.getContext('2d');
+        var pdfCtxInsert = pdfCanvasInsert ? pdfCanvasInsert.getContext('2d') : null;
 
+        additionalContainer && (additionalContainer.innerHTML = '');
+
+        // state สำหรับกรอบตราประทับในหน้าหลัก (set เมื่อกดปุ่ม add-stamp)
         var markCoordinates = null;
 
         document.getElementById('add-stamp').disabled = true;
 
         function renderPage(num) {
-            pageRendering = true;
-
             pdfDoc.getPage(num).then(function(page) {
                 let viewport = page.getViewport({
                     scale: scale
@@ -63,92 +65,69 @@
                     canvasContext: pdfCtx,
                     viewport: viewport
                 };
-                let renderTask = page.render(renderContext);
-
-                renderTask.promise.then(function() {
-                    pageRendering = false;
-                    if (pageNumPending !== null) {
-                        renderPage(pageNumPending);
-                        pageNumPending = null;
-                    }
-                });
+                page.render(renderContext);
             });
-
-            selectPage.value = num;
         }
-
-        function queueRenderPage(num) {
-            if (pageRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
-            }
-        }
-
-        function onNextPage() {
-            if (pageNum >= pdfDoc.numPages) {
-                return;
-            }
-            pageNum++;
-            queueRenderPage(pageNum);
-        }
-
-        function onPrevPage() {
-            if (pageNum <= 1) {
-                return;
-            }
-            pageNum--;
-            queueRenderPage(pageNum);
-        }
-
-        selectPage.addEventListener('change', function() {
-            let selectedPage = parseInt(this.value);
-            if (selectedPage && selectedPage >= 1 && selectedPage <= pdfDoc.numPages) {
-                pageNum = selectedPage;
-                queueRenderPage(selectedPage);
-            }
-        });
 
         pdfjsLib.getDocument({
             url: url,
             withCredentials: true,
             disableRange: true
         }).promise.then(function(pdfDoc_) {
-            // If a newer load started, ignore this outdated result
-            if (thisLoad !== pdfLoadSeq) return;
+            if (thisLoad !== pdfLoadSeq) return; // ผลลัพธ์เก่า
+
             pdfDoc = pdfDoc_;
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                let option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                selectPage.appendChild(option);
+            renderPage(pageNum);
+
+            // แสดงหน้าถัด ๆ ไปเป็นภาพ
+            if (additionalContainer) {
+                for (let i = 2; i <= pdfDoc.numPages; i++) {
+                    pdfDoc.getPage(i).then(function(page) {
+                        const viewport = page.getViewport({
+                            scale: scale
+                        });
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        wrapper.style.margin = '20px auto 0';
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        wrapper.appendChild(canvas);
+
+                        const ctx = canvas.getContext('2d');
+                        page.render({
+                            canvasContext: ctx,
+                            viewport: viewport
+                        });
+
+                        additionalContainer.appendChild(wrapper);
+                    });
+                }
             }
 
-            renderPage(pageNum);
             document.getElementById('add-stamp').disabled = false;
         });
 
-
-        document.getElementById('next').onclick = onNextPage;
-        document.getElementById('prev').onclick = onPrevPage;
-
-
-        // let markEventListener = null;
-        // let markEventListenerInsert = null;
-        $('#add-stamp').click(function(e) {
+        // ==============================
+        // ปุ่ม “ตราประทับ”
+        // ==============================
+        $('#add-stamp').off('click').on('click', function(e) {
             e.preventDefault();
             removeMarkListener();
+
             document.getElementById('add-stamp').disabled = true;
             document.getElementById('save-stamp').disabled = false;
 
             var markCanvas = document.getElementById('mark-layer');
+            if (!markCanvas) return;
             var markCtx = markCanvas.getContext('2d');
-            var rect = markCanvas.getBoundingClientRect();
-            // Default position: center of canvas
+
+            // จุดตั้งต้น
             var defaultWidth = 230;
             var defaultHeight = 115;
-            var startX;
-            var startY;
+            var startX, startY;
+
             if (editMode && $('#oldPositionX').val()) {
                 startX = parseFloat($('#oldPositionX').val());
                 startY = parseFloat($('#oldPositionY').val());
@@ -160,6 +139,7 @@
                 startY = (markCanvas.height - defaultHeight) / 2;
                 $('#positionPages').val(1);
             }
+
             var endX = startX + defaultWidth;
             var endY = startY + defaultHeight;
 
@@ -170,6 +150,7 @@
                 endY
             };
             drawMark(startX, startY, endX, endY);
+
             $('#positionX').val(startX);
             $('#positionY').val(startY);
             $('#positionWidth').val(defaultWidth);
@@ -180,27 +161,26 @@
             drawTextHeader('12px Sarabun', startX + 8, startY + 80, 'วันที่.........เดือน......................พ.ศ.........');
             drawTextHeader('12px Sarabun', startX + 8, startY + 100, 'เวลา......................................................น.');
 
-            // Drag logic
-            var isDragging = false;
-            var dragOffsetX = 0;
-            var dragOffsetY = 0;
-            var isResizing = false;
+            // ลาก/ย่อ-ขยายกรอบ
+            var isDragging = false,
+                isResizing = false;
+            var dragOffsetX = 0,
+                dragOffsetY = 0;
             var resizeHandleSize = 16;
 
             function redrawStampBox() {
                 markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-                // Calculate scale for both box and text based on current box size
                 var boxW = markCoordinates.endX - markCoordinates.startX;
                 var boxH = markCoordinates.endY - markCoordinates.startY;
+
                 $('#positionWidth').val(boxW);
                 $('#positionHeight').val(boxH);
-                var defaultWidth = 230;
-                var defaultHeight = 115;
-                // Use the smaller scale of width/height to keep aspect ratio
-                var scaleW = boxW / defaultWidth;
-                var scaleH = boxH / defaultHeight;
-                var scale = Math.min(scaleW, scaleH);
+
+                var baseW = 230,
+                    baseH = 115;
+                var scale = Math.min(boxW / baseW, boxH / baseH);
                 scale = Math.max(0.5, Math.min(2.5, scale));
+
                 drawMark(markCoordinates.startX, markCoordinates.startY, markCoordinates.endX, markCoordinates.endY);
                 drawTextHeader((15 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 3 * scale, markCoordinates.startY + 25 * scale, 'องค์การบริหารส่วนตำบลพระอาจารย์');
                 drawTextHeader((12 * scale).toFixed(1) + 'px Sarabun', markCoordinates.startX + 8 * scale, markCoordinates.startY + 55 * scale, 'รับที่..........................................................');
@@ -215,11 +195,11 @@
                 );
             }
 
-            // Change cursor when hovering resize handle
             markCanvas.addEventListener('mousemove', function(e) {
                 var rect = markCanvas.getBoundingClientRect();
                 var mouseX = e.clientX - rect.left;
                 var mouseY = e.clientY - rect.top;
+
                 if (isOnResizeHandle(mouseX, mouseY)) {
                     markCanvas.style.cursor = 'se-resize';
                 } else if (
@@ -236,6 +216,7 @@
                 var rect = markCanvas.getBoundingClientRect();
                 var mouseX = e.clientX - rect.left;
                 var mouseY = e.clientY - rect.top;
+
                 if (isOnResizeHandle(mouseX, mouseY)) {
                     isResizing = true;
                     e.preventDefault();
@@ -254,18 +235,14 @@
                 }
             };
 
-            // Prevent accidental reset of box when clicking outside
+            // กันคลิกนอกกรอบแล้วล้างโดยไม่ตั้งใจ
             markCanvas.addEventListener('click', function(e) {
                 var rect = markCanvas.getBoundingClientRect();
                 var mouseX = e.clientX - rect.left;
                 var mouseY = e.clientY - rect.top;
-                // Only allow click to reset if click is outside the box and not resizing/dragging
-                if (
-                    !isDragging && !isResizing &&
+                if (!isDragging && !isResizing &&
                     (mouseX < markCoordinates.startX || mouseX > markCoordinates.endX ||
-                    mouseY < markCoordinates.startY || mouseY > markCoordinates.endY)
-                ) {
-                    // Prevent reset: do nothing
+                        mouseY < markCoordinates.startY || mouseY > markCoordinates.endY)) {
                     e.stopPropagation();
                     e.preventDefault();
                 }
@@ -273,20 +250,22 @@
 
             function onDragMove(e) {
                 if (!isDragging) return;
-                // Calculate mouse position relative to canvas
                 var rect = markCanvas.getBoundingClientRect();
                 var mouseX = e.clientX - rect.left;
                 var mouseY = e.clientY - rect.top;
-                // Keep current box size
+
                 var boxW = markCoordinates.endX - markCoordinates.startX;
                 var boxH = markCoordinates.endY - markCoordinates.startY;
+
                 var newStartX = mouseX - dragOffsetX;
                 var newStartY = mouseY - dragOffsetY;
-                // Clamp to canvas bounds
+
                 newStartX = Math.max(0, Math.min(markCanvas.width - boxW, newStartX));
                 newStartY = Math.max(0, Math.min(markCanvas.height - boxH, newStartY));
+
                 var newEndX = newStartX + boxW;
                 var newEndY = newStartY + boxH;
+
                 if (newEndX > markCanvas.width) {
                     newEndX = markCanvas.width;
                     newStartX = newEndX - boxW;
@@ -295,12 +274,15 @@
                     newEndY = markCanvas.height;
                     newStartY = newEndY - boxH;
                 }
+
                 markCoordinates.startX = newStartX;
                 markCoordinates.startY = newStartY;
                 markCoordinates.endX = newEndX;
                 markCoordinates.endY = newEndY;
+
                 $('#positionX').val(newStartX);
                 $('#positionY').val(newStartY);
+
                 redrawStampBox();
                 showCancelStampBtn(markCoordinates.endX, markCoordinates.startY);
             }
@@ -310,36 +292,40 @@
                 var rect = markCanvas.getBoundingClientRect();
                 var mouseX = e.clientX - rect.left;
                 var mouseY = e.clientY - rect.top;
-                // Clamp min size
-                var minW = 40, minH = 30;
+
+                var minW = 40,
+                    minH = 30;
                 var newEndX = Math.max(markCoordinates.startX + minW, mouseX);
                 var newEndY = Math.max(markCoordinates.startY + minH, mouseY);
-                // Clamp to canvas
+
                 newEndX = Math.min(markCanvas.width, newEndX);
                 newEndY = Math.min(markCanvas.height, newEndY);
-                // Set only the width/height, keep startX/startY fixed
+
                 markCoordinates.endX = newEndX;
                 markCoordinates.endY = newEndY;
+
                 redrawStampBox();
                 showCancelStampBtn(markCoordinates.endX, markCoordinates.startY);
             }
 
-            function onResizeEnd(e) {
+            function onResizeEnd() {
                 isResizing = false;
                 window.removeEventListener('mousemove', onResizeMove);
                 window.removeEventListener('mouseup', onResizeEnd);
             }
 
-            function onDragEnd(e) {
+            function onDragEnd() {
                 isDragging = false;
                 window.removeEventListener('mousemove', onDragMove);
                 window.removeEventListener('mouseup', onDragEnd);
             }
-            //เกษียณพับครึ่ง
+
+            // ----- ใส่บนแท็บ insert (พับครึ่ง) -----
             markEventListenerInsert = function(e) {
-                var markCanvas = document.getElementById('mark-layer-insert');
-                var markCtx = markCanvas.getContext('2d');
-                var rect = markCanvas.getBoundingClientRect();
+                var markCanvasIns = document.getElementById('mark-layer-insert');
+                if (!markCanvasIns) return;
+                var markCtxIns = markCanvasIns.getContext('2d');
+                var rect = markCanvasIns.getBoundingClientRect();
                 var startX = (e.clientX - rect.left);
                 var startY = (e.clientY - rect.top);
 
@@ -353,6 +339,7 @@
                     endY
                 };
                 drawMarkInsert(startX, startY, endX, endY);
+
                 $('#positionX').val(startX);
                 $('#positionY').val(startY);
                 $('#positionPages').val(2);
@@ -366,21 +353,26 @@
             };
 
             var markCanvasInsert = document.getElementById('mark-layer-insert');
-            markCanvasInsert.addEventListener('click', markEventListenerInsert);
+            if (markCanvasInsert) {
+                markCanvasInsert.addEventListener('click', markEventListenerInsert);
+            }
         });
 
-        $('#number-stamp').click(function(e) {
+        // ==============================
+        // ปุ่ม “ประทับเลขที่รับ”
+        // ==============================
+        $('#number-stamp').off('click').on('click', function(e) {
             e.preventDefault();
             removeMarkListener();
             document.getElementById('number-save').disabled = false;
 
             markEventListener = function(e) {
                 var markCanvas = document.getElementById('mark-layer');
-                var markCtx = markCanvas.getContext('2d');
+                if (!markCanvas) return;
+
                 var rect = markCanvas.getBoundingClientRect();
                 var startX = (e.clientX - rect.left);
                 var startY = (e.clientY - rect.top);
-
                 var endX = startX + 30;
                 var endY = startY;
 
@@ -391,6 +383,7 @@
                     endY
                 };
                 drawMarkHidden(startX, startY, endX, endY);
+
                 $('#positionX').val(startX);
                 $('#positionY').val(startY);
 
@@ -398,16 +391,22 @@
             };
 
             var markCanvas = document.getElementById('mark-layer');
-            markCanvas.addEventListener('click', markEventListener);
+            if (markCanvas) markCanvas.addEventListener('click', markEventListener);
         });
 
+        // ==============================
+        // util ใน pdf()
+        // ==============================
         function removeMarkListener() {
             var markCanvas = document.getElementById('mark-layer');
             var markCanvasInsert = document.getElementById('mark-layer-insert');
-            if (markEventListener) {
+
+            if (markEventListener && markCanvas) {
+                markCanvas.removeEventListener('click', markEventListener);
                 markEventListener = null;
             }
-            if (markEventListenerInsert) {
+            if (markEventListenerInsert && markCanvasInsert) {
+                markCanvasInsert.removeEventListener('click', markEventListenerInsert);
                 markEventListenerInsert = null;
             }
             $('#positionX').val('');
@@ -417,9 +416,7 @@
             $('#positionHeight').val('');
         }
 
-        // ฟังก์ชันในการวาดกากบาทเล็กๆ ที่มุมขวาบน
         function drawMark(startX, startY, endX, endY) {
-            // วาดกรอบตราประทับ (ไม่มีเครื่องหมายกากบาท)
             var markCanvas = document.getElementById('mark-layer');
             var markCtx = markCanvas.getContext('2d');
             markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
@@ -428,7 +425,8 @@
             markCtx.lineWidth = 0.5;
             markCtx.strokeStyle = 'blue';
             markCtx.stroke();
-            // Draw resize handle (bottom-right)
+
+            var resizeHandleSize = 16;
             markCtx.save();
             markCtx.beginPath();
             markCtx.rect(endX - resizeHandleSize, endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
@@ -441,12 +439,13 @@
         }
 
         function drawMarkInsert(startX, startY, endX, endY) {
-            //เคลียร์กรอบเดิมของหน้าหนังสือ
-            var markCanvas = document.getElementById('mark-layer');
-            var markCtx = markCanvas.getContext('2d');
-            markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+            var markCanvasMain = document.getElementById('mark-layer');
+            var markCtxMain = markCanvasMain.getContext('2d');
+            markCtxMain.clearRect(0, 0, markCanvasMain.width, markCanvasMain.height);
 
             var markCanvas = document.getElementById('mark-layer-insert');
+            if (!markCanvas) return;
+
             var markCtx = markCanvas.getContext('2d');
             markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
 
@@ -471,13 +470,11 @@
                 var clickX = event.clientX - rect.left;
                 var clickY = event.clientY - rect.top;
 
-                if (
-                    clickX >= endX - crossSize && clickX <= endX &&
-                    clickY >= startY && clickY <= startY + crossSize
-                ) {
+                if (clickX >= endX - crossSize && clickX <= endX &&
+                    clickY >= startY && clickY <= startY + crossSize) {
                     removeMarkListener();
-                    var markCtx = markCanvas.getContext('2d');
-                    markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height); // เคลียร์แคนวาส
+                    var ctx = markCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, markCanvas.width, markCanvas.height);
                 }
             });
         }
@@ -502,13 +499,11 @@
                 var clickX = event.clientX - rect.left;
                 var clickY = event.clientY - rect.top;
 
-                if (
-                    clickX >= endX - crossSize && clickX <= endX &&
-                    clickY >= startY && clickY <= startY + crossSize
-                ) {
+                if (clickX >= endX - crossSize && clickX <= endX &&
+                    clickY >= startY && clickY <= startY + crossSize) {
                     removeMarkListener();
-                    var markCtx = markCanvas.getContext('2d');
-                    markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height); // เคลียร์แคนวาส
+                    var ctx = markCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, markCanvas.width, markCanvas.height);
                 }
             });
         }
@@ -516,7 +511,6 @@
         function drawTextHeader(type, startX, startY, text) {
             var markCanvas = document.getElementById('mark-layer');
             var markCtx = markCanvas.getContext('2d');
-
             markCtx.font = type;
             markCtx.fillStyle = "blue";
             markCtx.fillText(text, startX, startY);
@@ -524,41 +518,54 @@
 
         function drawTextHeaderInsert(type, startX, startY, text) {
             var markCanvas = document.getElementById('mark-layer-insert');
+            if (!markCanvas) return;
             var markCtx = markCanvas.getContext('2d');
-
             markCtx.font = type;
             markCtx.fillStyle = "blue";
             markCtx.fillText(text, startX, startY);
         }
     }
 
+    // ไว้ให้ remove/add click listener (ใช้ใน pdf())
     let markEventListener = null;
     let markEventListenerInsert = null;
 
+    // ==============================
+    // เปิดเอกสาร
+    // ==============================
     function openPdf(url, id, status, type, is_check = '', number_id, position_id) {
         $('.btn-default').hide();
         document.getElementById('reject-book').disabled = true;
         $('#div-showPdf').show();
         $('#div-uploadPdf').hide();
+
         editMode = false;
+
         document.getElementById('add-stamp').disabled = false;
         document.getElementById('save-stamp').disabled = true;
         document.getElementById('number-save').disabled = true;
-        $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
+
+        // สร้าง canvas ใหม่ทุกครั้ง ก่อนเรียก pdf()
+        $('#div-canvas').html(
+            '<div style="position: relative;">' +
+            '<canvas id="pdf-render"></canvas>' +
+            '<canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas>' +
+            '</div>' +
+            '<div id="pdf-additional"></div>'
+        );
+
         pdf(url);
+
         $('#id').val(id);
         $('#position_id').val(position_id);
         $('#number_id').val(number_id);
-        $('#positionX').val('');
-        $('#positionY').val('');
-        $('#oldPositionX').val('');
-        $('#oldPositionY').val('');
-        $('#oldPositionPages').val('');
-        $('#oldPositionWidth').val('');
-        $('#oldPositionHeight').val('');
+
+        // reset values
+        $('#positionX, #positionY, #oldPositionX, #oldPositionY, #oldPositionPages, #oldPositionWidth, #oldPositionHeight').val('');
+
         if (status == STATUS.STAMPED) {
-            $.get('/book/stamp_position/' + id, function(res){
-                if(res.status){
+            $.get('/book/stamp_position/' + id, function(res) {
+                if (res.status) {
                     $('#oldPositionX').val(res.x);
                     $('#oldPositionY').val(res.y);
                     $('#oldPositionPages').val(res.pages);
@@ -567,47 +574,44 @@
                 }
             });
         }
-        document.getElementById('add-stamp').disabled = true;
-        // if (permission_id != '1') {
+
         if (type == 1) {
             if (status == STATUS.PENDING_STAMP) {
-                $('#add-stamp').show();
-                $('#save-stamp').show();
-                $('#insert-pages').show();
+                $('#add-stamp, #save-stamp, #insert-pages').show();
             }
             if (status == STATUS.STAMPED) {
-                $('#send-to').show();
-                $('#edit-stamp').show();
-                $('#save-stamp').show();
+                $('#send-to, #edit-stamp, #save-stamp').show();
             } else {
                 $('#edit-stamp').hide();
                 $('#save-stamp').show();
             }
         }
+
         if (type == 2) {
             if (is_check == '' || is_check == 'null') {
-                $('#number-stamp').show();
-                $('#number-save').show();
-                $('#add-stamp').hide();
-                $('#save-stamp').hide();
-
+                $('#number-stamp, #number-save').show();
+                $('#add-stamp, #save-stamp').hide();
             } else {
                 if (status == STATUS.STAMPED) {
                     $('#send-to').show();
                 }
             }
         }
+
         $.get('/book/created_position/' + id, function(res) {
             if (status >= STATUS.ADMIN_PROCESS && status < STATUS.ARCHIVED && position_id != res.position_id) {
                 document.getElementById('reject-book').disabled = false;
                 $('#reject-book').show();
             }
         });
-        // }
+
         resetMarking();
         removeMarkListener();
     }
 
+    // ==============================
+    // อัปโหลด PDF แทน
+    // ==============================
     function uploadPdf(id) {
         uploadArea.style.opacity = '';
         uploadArea.style.position = '';
@@ -626,71 +630,72 @@
         $('#id').val(id);
     }
 
+    // ==============================
+    // utils นอก pdf()
+    // ==============================
     function removeMarkListener() {
         var markCanvas = document.getElementById('mark-layer');
         var markCanvasInsert = document.getElementById('mark-layer-insert');
-        if (markEventListener) {
+        if (markEventListener && markCanvas) {
             markCanvas.removeEventListener('click', markEventListener);
             markEventListener = null;
         }
-        if (markEventListenerInsert) {
+        if (markEventListenerInsert && markCanvasInsert) {
             markCanvasInsert.removeEventListener('click', markEventListenerInsert);
             markEventListenerInsert = null;
         }
-        $('#positionX').val('');
-        $('#positionY').val('');
-        $('#positionPages').val('');
-        $('#positionWidth').val('');
-        $('#positionHeight').val('');
-        $('#edit-date-hidden').val('');
-        $('#edit-time-hidden').val('');
+        $('#positionX, #positionY, #positionPages, #positionWidth, #positionHeight, #edit-date-hidden, #edit-time-hidden').val('');
     }
 
     function resetMarking() {
         var markCanvas = document.getElementById('mark-layer');
         var markCanvasInsert = document.getElementById('mark-layer-insert');
-        var markCtx = markCanvas.getContext('2d');
-        var markCtxInsert = markCanvasInsert.getContext('2d');
-        markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-        markCtxInsert.clearRect(0, 0, markCanvasInsert.width, markCanvasInsert.height);
+        if (markCanvas) {
+            var markCtx = markCanvas.getContext('2d');
+            markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+        }
+        if (markCanvasInsert) {
+            var markCtxInsert = markCanvasInsert.getContext('2d');
+            markCtxInsert.clearRect(0, 0, markCanvasInsert.width, markCanvasInsert.height);
+        }
     }
 
-    selectPageTable.addEventListener('change', function() {
-        let selectedPage = parseInt(this.value);
-        ajaxTable(selectedPage);
-    });
+    // ==============================
+    // เปลี่ยนหน้า list เอกสาร (ซ้าย)
+    // ==============================
+    if (selectPageTable) {
+        selectPageTable.addEventListener('change', function() {
+            let selectedPage = parseInt(this.value, 10);
+            ajaxTable(selectedPage);
+        });
+    }
 
     function onNextPageTable() {
-        if (pageNumTalbe >= pageTotal) {
-            return;
-        }
+        if (pageNumTalbe >= pageTotal) return;
         pageNumTalbe++;
-        selectPageTable.value = pageNumTalbe;
+        selectPageTable && (selectPageTable.value = pageNumTalbe);
         ajaxTable(pageNumTalbe);
     }
 
     function onPrevPageTable() {
-        if (pageNumTalbe <= 1) {
-            return;
-        }
+        if (pageNumTalbe <= 1) return;
         pageNumTalbe--;
-        selectPageTable.value = pageNumTalbe;
+        selectPageTable && (selectPageTable.value = pageNumTalbe);
         ajaxTable(pageNumTalbe);
     }
-    document.getElementById('nextPage').addEventListener('click', onNextPageTable);
-    document.getElementById('prevPage').addEventListener('click', onPrevPageTable);
+    document.getElementById('nextPage')?.addEventListener('click', onNextPageTable);
+    document.getElementById('prevPage')?.addEventListener('click', onPrevPageTable);
 
     function ajaxTable(pages) {
-        $('#id').val('');
-        $('#positionX').val('');
-        $('#positionY').val('');
+        $('#id, #positionX, #positionY').val('');
         document.getElementById('add-stamp').disabled = false;
         document.getElementById('save-stamp').disabled = true;
+
         $.ajax({
             type: "post",
             url: "/book/dataList",
             data: {
-                pages: pages,
+                pages: pages
             },
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -701,26 +706,35 @@
                     $('#box-card-item').empty();
                     $('#div-canvas').html('<div style="position: relative;"><canvas id="pdf-render"></canvas><canvas id="mark-layer" style="position: absolute; left: 0; top: 0;"></canvas></div>');
                     response.book.forEach(element => {
-                        var color = 'info';
-                        if (element.type != 1) {
-                            var color = 'warning';
-                        }
-                        $html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' + element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' + element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
-                        $('#box-card-item').append($html);
+                        var color = (element.type != 1) ? 'warning' : 'info';
+                        var html = '<a href="javascript:void(0)" onclick="openPdf(' +
+                            "'" + element.url + "'" + ',' +
+                            "'" + element.id + "'" + ',' +
+                            "'" + element.status + "'" + ',' +
+                            "'" + element.type + "'" + ',' +
+                            "'" + element.is_number_stamp + "'" + ',' +
+                            "'" + element.inputBookregistNumber + "'" + ',' +
+                            "'" + element.position_id + "'" +
+                            ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' +
+                            element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' +
+                            element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
+                        $('#box-card-item').append(html);
                     });
                 }
             }
         });
     }
 
+    // ==============================
+    // ค้นหาเอกสาร
+    // ==============================
     $('#search_btn').click(function(e) {
         e.preventDefault();
-        $('#id').val('');
-        $('#positionX').val('');
-        $('#positionY').val('');
+        $('#id, #positionX, #positionY').val('');
         $('.btn-default').hide();
         document.getElementById('add-stamp').disabled = false;
         document.getElementById('save-stamp').disabled = true;
+
         $.ajax({
             type: "post",
             url: "/book/dataListSearch",
@@ -739,23 +753,31 @@
                     pageNumTalbe = 1;
                     pageTotal = response.totalPages;
                     response.book.forEach(element => {
-                        var color = 'info';
-                        if (element.type != 1) {
-                            var color = 'warning';
-                        }
-                        $html = '<a href="javascript:void(0)" onclick="openPdf(' + "'" + element.url + "'" + ',' + "'" + element.id + "'" + ',' + "'" + element.status + "'" + ',' + "'" + element.type + "'" + ',' + "'" + element.is_number_stamp + "'" + ',' + "'" + element.inputBookregistNumber + "'" + ',' + "'" + element.position_id + "'" + ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' + element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' + element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
-                        $('#box-card-item').append($html);
+                        var color = (element.type != 1) ? 'warning' : 'info';
+                        var html = '<a href="javascript:void(0)" onclick="openPdf(' +
+                            "'" + element.url + "'" + ',' +
+                            "'" + element.id + "'" + ',' +
+                            "'" + element.status + "'" + ',' +
+                            "'" + element.type + "'" + ',' +
+                            "'" + element.is_number_stamp + "'" + ',' +
+                            "'" + element.inputBookregistNumber + "'" + ',' +
+                            "'" + element.position_id + "'" +
+                            ')"><div class="card border-' + color + ' mb-2"><div class="card-header text-dark fw-bold">' +
+                            element.inputSubject + '</div><div class="card-body text-dark"><div class="row"><div class="col-9">' +
+                            element.selectBookFrom + '</div><div class="col-3 fw-bold">' + element.showTime + ' น.</div></div></div></div></a>';
+                        $('#box-card-item').append(html);
                     });
+
                     $("#page-select-card").empty();
-                    for (let index = 1; index <= pageTotal; index++) {
-                        $('#page-select-card').append('<option value="' + index + '">' + index + '</option>');
+                    for (let i = 1; i <= pageTotal; i++) {
+                        $('#page-select-card').append('<option value="' + i + '">' + i + '</option>');
                     }
                 }
             }
         });
     });
 
-    // Allow pressing Enter in the search box to trigger search
+    // Enter = ค้นหา
     $('#inputSearch').on('keydown', function(e) {
         if (e.key === 'Enter' || e.keyCode === 13) {
             e.preventDefault();
@@ -763,6 +785,9 @@
         }
     });
 
+    // ==============================
+    // บันทึกตราประทับ
+    // ==============================
     $('#save-stamp').click(function(e) {
         e.preventDefault();
         var id = $('#id').val();
@@ -771,8 +796,9 @@
         var positionPages = $('#positionPages').val();
         var positionWidth = $('#positionWidth').val();
         var positionHeight = $('#positionHeight').val();
-        var pages = $('#page-select').find(":selected").val();
-        if (id != '' && positionX != '' && positionY != '') {
+        var pages = 1;
+
+        if (id && positionX !== '' && positionY !== '') {
             Swal.fire({
                 title: "ยืนยันการลงบันทึกเวลา",
                 showCancelButton: true,
@@ -791,10 +817,11 @@
                         height: positionHeight,
                         pages: pages
                     };
-                    if(editMode){
+                    if (editMode) {
                         postData.date = $('#edit-date-hidden').val();
                         postData.time = $('#edit-time-hidden').val();
                     }
+
                     $.ajax({
                         type: "post",
                         url: urlAjax,
@@ -806,9 +833,7 @@
                         success: function(response) {
                             if (response.status) {
                                 Swal.fire("", "บันทึกเรียบร้อย", "success");
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
+                                setTimeout(() => location.reload(), 1500);
                             } else {
                                 Swal.fire("", "บันทึกไม่สำเร็จ", "error");
                             }
@@ -821,12 +846,15 @@
         }
     });
 
+    // ==============================
+    // แก้ไขตราประทับ (ผู้ดูแล)
+    // ==============================
     $('#edit-stamp').click(function(e) {
         e.preventDefault();
         Swal.fire({
             title: 'ยืนยันตัวตนผู้ดูแล',
             html: '<input id="admin-user" class="swal2-input" placeholder="Username">' +
-                  '<input id="admin-pass" type="password" class="swal2-input" placeholder="Password">',
+                '<input id="admin-pass" type="password" class="swal2-input" placeholder="Password">',
             focusConfirm: false,
             showCancelButton: true,
             confirmButtonText: 'ตกลง',
@@ -837,8 +865,13 @@
                 return $.ajax({
                     type: 'post',
                     url: '/book/check_admin',
-                    data: { username: username, password: password },
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    data: {
+                        username: username,
+                        password: password
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
                 });
             }
         }).then((result) => {
@@ -846,7 +879,7 @@
                 Swal.fire({
                     title: 'แก้ไขวันและเวลา',
                     html: '<input type="date" id="edit-date" class="swal2-input">' +
-                          '<input type="time" id="edit-time" class="swal2-input">',
+                        '<input type="time" id="edit-time" class="swal2-input">',
                     showCancelButton: true,
                     confirmButtonText: 'ตกลง',
                     cancelButtonText: 'ยกเลิก'
@@ -858,9 +891,9 @@
                         $('#add-stamp').show();
                         document.getElementById('add-stamp').disabled = false;
                         $('#add-stamp').trigger('click');
-                        if($('#oldPositionX').val()){
+                        if ($('#oldPositionX').val()) {
                             Swal.fire('', 'ยืนยันตำแหน่งตราประทับแล้วกดบันทึก', 'info');
-                        }else{
+                        } else {
                             Swal.fire('', 'เลือกตำแหน่งตราประทับแล้วกดบันทึก', 'info');
                         }
                     }
@@ -870,14 +903,19 @@
             }
         });
     });
+
+    // ==============================
+    // บันทึกเลขที่รับ
+    // ==============================
     $('#number-save').click(function(e) {
         e.preventDefault();
         var id = $('#id').val();
         var positionX = $('#positionX').val();
         var positionY = $('#positionY').val();
-        var pages = $('#page-select').find(":selected").val();
+        var pages = 1;
         var number_id = $('#number_id').val();
-        if (id != '' && positionX != '' && positionY != '') {
+
+        if (id && positionX !== '' && positionY !== '') {
             Swal.fire({
                 title: "ยืนยันการลงบันทึกเวลา",
                 showCancelButton: true,
@@ -903,9 +941,7 @@
                         success: function(response) {
                             if (response.status) {
                                 Swal.fire("", "บันทึกเรียบร้อย", "success");
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
+                                setTimeout(() => location.reload(), 1500);
                             } else {
                                 Swal.fire("", "บันทึกไม่สำเร็จ", "error");
                             }
@@ -918,6 +954,9 @@
         }
     });
 
+    // ==============================
+    // ส่งเรื่อง
+    // ==============================
     $('#send-to').click(function(e) {
         e.preventDefault();
         Swal.fire({
@@ -925,7 +964,7 @@
             html: `
                 <select id="select_position_id" name="states[]" multiple="multiple" class="swal2-input" style="width: 80%;">
                     @foreach($position as $key => $rec)
-                    <option value="{{$key}}">{{$rec}}</option>
+                        <option value="{{$key}}">{{$rec}}</option>
                     @endforeach
                 </select>
             `,
@@ -962,14 +1001,10 @@
                     },
                     success: function(response) {
                         if (response.status) {
-                            if (response.status) {
-                                Swal.fire("", "แทงเรื่องเรียบร้อยแล้ว", "success");
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
-                            } else {
-                                Swal.fire("", "แทงเรื่องไม่สำเร็จ", "error");
-                            }
+                            Swal.fire("", "แทงเรื่องเรียบร้อยแล้ว", "success");
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            Swal.fire("", "แทงเรื่องไม่สำเร็จ", "error");
                         }
                     }
                 });
@@ -977,6 +1012,7 @@
         });
     });
 
+    // ปุ่มยกเลิกกล่องตรา
     function showCancelStampBtn(x, y) {
         let cancelBtn = document.getElementById('cancel-stamp-btn');
         var markCanvas = document.getElementById('mark-layer');
@@ -997,14 +1033,12 @@
             };
             document.body.appendChild(cancelBtn);
         }
-        // คำนวณตำแหน่งปุ่มจากตำแหน่งกล่องตราประทับบนจอจริง
         const rect = markCanvas.getBoundingClientRect();
-        const btnLeft = rect.left + x;
-        const btnTop = rect.top + y - 40; 
-        cancelBtn.style.left = btnLeft + 'px';
-        cancelBtn.style.top = btnTop + 'px';
+        cancelBtn.style.left = (rect.left + x) + 'px';
+        cancelBtn.style.top = (rect.top + y - 40) + 'px';
         cancelBtn.style.display = 'block';
     }
+
     function hideCancelStampBtn() {
         let cancelBtn = document.getElementById('cancel-stamp-btn');
         if (cancelBtn) cancelBtn.remove();
@@ -1017,135 +1051,45 @@
         hideCancelStampBtn();
         _oldRemoveMarkListener.apply(this, arguments);
     };
-
-    var isResizing = false;
-    var resizeHandleSize = 16;
-
-    function isOnResizeHandle(mouseX, mouseY) {
-        return (
-            mouseX >= markCoordinates.endX - resizeHandleSize && mouseX <= markCoordinates.endX &&
-            mouseY >= markCoordinates.endY - resizeHandleSize && mouseY <= markCoordinates.endY
-        );
-    }
-
-    function drawMark(startX, startY, endX, endY) {
-        var markCanvas = document.getElementById('mark-layer');
-        var markCtx = markCanvas.getContext('2d');
-        markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
-        markCtx.beginPath();
-        markCtx.rect(startX, startY, endX - startX, endY - startY);
-        markCtx.lineWidth = 0.5;
-        markCtx.strokeStyle = 'blue';
-        markCtx.stroke();
-        // Draw resize handle (bottom-right)
-        markCtx.save();
-        markCtx.beginPath();
-        markCtx.rect(endX - resizeHandleSize, endY - resizeHandleSize, resizeHandleSize, resizeHandleSize);
-        markCtx.fillStyle = '#fff';
-        markCtx.strokeStyle = '#007bff';
-        markCtx.lineWidth = 2;
-        markCtx.fill();
-        markCtx.stroke();
-        markCtx.restore();
-    }
-
-    // Change cursor when hovering resize handle
-    markCanvas.addEventListener('mousemove', function(e) {
-        var rect = markCanvas.getBoundingClientRect();
-        var mouseX = e.clientX - rect.left;
-        var mouseY = e.clientY - rect.top;
-        if (isResizing) {
-            markCanvas.style.cursor = 'se-resize';
-        } else if (isOnResizeHandle(mouseX, mouseY)) {
-            markCanvas.style.cursor = 'se-resize';
-        } else if (
-            markCoordinates &&
-            mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
-            mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
-        ) {
-            markCanvas.style.cursor = 'move';
-        } else {
-            markCanvas.style.cursor = 'default';
-        }
-    });
-
-    // Merge drag/resize logic
-    markCanvas.onmousedown = function(e) {
-        var rect = markCanvas.getBoundingClientRect();
-        var mouseX = e.clientX - rect.left;
-        var mouseY = e.clientY - rect.top;
-        if (isOnResizeHandle(mouseX, mouseY)) {
-            isResizing = true;
-            // Prevent text selection and other default actions
-            e.preventDefault();
-            window.addEventListener('mousemove', onResizeMove);
-            window.addEventListener('mouseup', onResizeEnd);
-        } else if (
-            markCoordinates &&
-            mouseX >= markCoordinates.startX && mouseX <= markCoordinates.endX &&
-            mouseY >= markCoordinates.startY && mouseY <= markCoordinates.endY
-        ) {
-            isDragging = true;
-            dragOffsetX = mouseX - markCoordinates.startX;
-            dragOffsetY = mouseY - markCoordinates.startY;
-            e.preventDefault();
-            window.addEventListener('mousemove', onDragMove);
-            window.addEventListener('mouseup', onDragEnd);
-        }
-    };
-
-    function onResizeMove(e) {
-        if (!isResizing) return;
-        // Prevent text selection while resizing
-        e.preventDefault();
-        var rect = markCanvas.getBoundingClientRect();
-        var mouseX = e.clientX - rect.left;
-        var mouseY = e.clientY - rect.top;
-        // Clamp min size
-        var minW = 40,
-            minH = 30;
-        var newEndX = Math.max(markCoordinates.startX + minW, mouseX);
-        var newEndY = Math.max(markCoordinates.startY + minH, mouseY);
-        // Clamp to canvas
-        newEndX = Math.min(markCanvas.width, newEndX);
-        newEndY = Math.min(markCanvas.height, newEndY);
-        markCoordinates.endX = newEndX;
-        markCoordinates.endY = newEndY;
-        $('#positionX').val(markCoordinates.startX);
-        $('#positionY').val(markCoordinates.startY);
-        redrawStampBox();
-        showCancelStampBtn(markCoordinates.endX, markCoordinates.startY);
-    }
-
-    function onResizeEnd(e) {
-        isResizing = false;
-        window.removeEventListener('mousemove', onResizeMove);
-        window.removeEventListener('mouseup', onResizeEnd);
-    }
 </script>
+
 <script>
+    // ==============================
+    // ฝั่งอัปโหลด PDF
+    // ==============================
     var input_hiddenFiles = '';
-    browseBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', function(event) {
-        var file = event.target.files[0];
-        if (file && file.type === 'application/pdf') {
-            handlePDF(file);
-            // fileInput.value = '';
-        } else {
-            Swal.fire({
-                title: "เฉพาะไฟล์นามสกุลที่เป็น .pdf",
-                icon: "info",
-                confirmButtonText: "ตกลง",
+
+    // ปุ่มเลือกไฟล์
+    (function() {
+        const browseBtn = document.getElementById('browse-btn');
+        const fileInput = document.getElementById('file-input');
+        if (browseBtn && fileInput) {
+            browseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', function(event) {
+                var file = event.target.files[0];
+                if (file && file.type === 'application/pdf') {
+                    handlePDF(file);
+                } else {
+                    Swal.fire({
+                        title: "เฉพาะไฟล์นามสกุลที่เป็น .pdf",
+                        icon: "info",
+                        confirmButtonText: "ตกลง"
+                    });
+                }
             });
         }
-    });
+    })();
 
     function handlePDF(file) {
         $('#upload-area').hide();
         $('#pdf-container').show();
         document.getElementById('save-pdf').disabled = false;
-        uploadArea.style.opacity = '0';
-        uploadArea.style.position = 'absolute';
+
+        if (uploadArea) {
+            uploadArea.style.opacity = '0';
+            uploadArea.style.position = 'absolute';
+        }
+
         const fileURL = URL.createObjectURL(file);
         const loadingTask = pdfjsLib.getDocument(fileURL);
         loadingTask.promise.then(function(pdf) {
@@ -1159,27 +1103,26 @@
 
                     canvas.height = viewport.height;
                     canvas.width = viewport.width;
-                    const renderContext = {
+
+                    page.render({
                         canvasContext: ctx,
                         viewport: viewport
-                    };
-                    page.render(renderContext);
+                    });
                     pdfContainer.appendChild(canvas);
                 });
             }
             pdfContainer.classList.remove('hidden');
         });
     }
-    uploadArea.addEventListener('dragover', (event) => {
+
+    uploadArea?.addEventListener('dragover', (event) => {
         event.preventDefault();
         uploadArea.classList.add('dragover');
     });
-
-    uploadArea.addEventListener('dragleave', () => {
+    uploadArea?.addEventListener('dragleave', () => {
         uploadArea.classList.remove('dragover');
     });
-
-    uploadArea.addEventListener('drop', (event) => {
+    uploadArea?.addEventListener('drop', (event) => {
         event.preventDefault();
         uploadArea.classList.remove('dragover');
 
@@ -1194,7 +1137,7 @@
     $('#save-pdf').click(function(e) {
         e.preventDefault();
         var fileInput = document.getElementById('file-input');
-        var file = fileInput.files[0];
+        var file = fileInput ? fileInput.files[0] : null;
         var id = $('#id').val();
 
         if (file) {
@@ -1227,12 +1170,13 @@
             alert('Please select a file!');
         }
     });
+
     $('#insert-pages').click(function(e) {
         e.preventDefault();
         $('#insert_tab').show();
     });
 
-    $('#reject-book').click(function (e) {
+    $('#reject-book').click(function(e) {
         e.preventDefault();
         Swal.fire({
             title: "",
@@ -1260,13 +1204,13 @@
                     url: "/book/reject",
                     data: {
                         id: id,
-                        note: note,
+                        note: note
                     },
                     dataType: "json",
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    success: function (response) {
+                    success: function(response) {
                         if (response.status) {
                             Swal.fire("", "ปฏิเสธเรียบร้อย", "success");
                             setTimeout(() => {
@@ -1296,22 +1240,18 @@
                     const viewport = page.getViewport({
                         scale
                     });
-
                     const canvas = document.getElementById("pdf-render-insert");
+                    if (!canvas) return;
                     const context = canvas.getContext("2d");
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
-
-                    const renderContext = {
+                    return page.render({
                         canvasContext: context,
                         viewport: viewport
-                    };
-                    return page.render(renderContext).promise;
+                    }).promise;
                 }).catch(error => console.error("Error rendering PDF:", error));
         }
-
         createAndRenderPDF();
     });
 </script>
-
 @endsection
