@@ -37,6 +37,18 @@ class TrackController extends Controller
         });
     }
 
+    private function isAdminUser(): bool
+    {
+        $email = strtolower($this->users->email ?? '');
+        $permissionName = strtolower($this->permission_data->permission_name ?? '');
+        // Heuristics: treat as admin when email is 'admin' or common admin email,
+        // or permission name equals 'admin', or permission_id == 1
+        if ($email === 'admin' || $email === 'admin@admin.com') return true;
+        if ($permissionName === 'admin') return true;
+        if ((int)($this->permission_id ?? 0) === 1) return true;
+        return false;
+    }
+
     public function index()
     {
         $data['permission_data'] = $this->permission_data;
@@ -46,16 +58,24 @@ class TrackController extends Controller
 
     public function dataReportMain()
     {
+        $isAdmin = $this->isAdminUser();
         $data = [
             'status' => false,
             'message' => '',
             'data' => []
         ];
         $logs = new Log_active_book();
-        $logs = $logs->select('book_id', Log_active_book::raw('count(id) as total'))->groupBy('book_id')->get();
+        $logs = $logs->select('book_id', Log_active_book::raw('count(id) as total'))
+            ->groupBy('book_id')
+            ->get();
         if (count($logs) > 0) {
             $info = [];
             foreach ($logs as $rec) {
+                // Only show books that are associated with the current user's position
+                $visible = $isAdmin || Log_status_book::where('book_id', $rec->book_id)
+                    ->where('position_id', $this->position_id)
+                    ->exists();
+                if (!$visible) continue;
                 $book = new Book();
                 $book = $book
                     ->select('books.*', 'book_types.name as type_name', 'book_number_types.name as number_type')
@@ -69,15 +89,15 @@ class TrackController extends Controller
 					} else {
 						$action = '<a href="' . url('/tracking/detail/' . Crypt::encrypt($book->id)) . '"><button class="btn btn-sm btn-outline-dark" title="ดูรายละเอียด"><i class="fa fa-search"></i></button></a>';
 					}
-					$info[] = [
-						'number_regis' => $book->inputBookregistNumber,
-						'type_regis' => $book->type_name,
-						'number_book' => $book->inputBooknumberOrgStruc . '/' . $book->number_type . $book->inputBooknumberEnd,
-						'title' => $book->inputSubject,
-						'date' => DateThai($book->inputRecieveDate),
-						'action' => $action
-					];
-				}
+                    $info[] = [
+                        'number_regis' => $book->inputBookregistNumber,
+                        'type_regis' => $book->type_name,
+                        'number_book' => $book->inputBooknumberOrgStruc . '/' . $book->number_type . $book->inputBooknumberEnd,
+                        'title' => $book->inputSubject,
+                        'date' => DateThai($book->inputRecieveDate),
+                        'action' => $action
+                    ];
+                }
             }
             $data = [
                 'data' => $info,
@@ -101,11 +121,20 @@ class TrackController extends Controller
     public function dataReportDetail(Request $request)
     {
         $id = Crypt::decrypt($request->input('id'));
+        $isAdmin = $this->isAdminUser();
+        // Guard access: only allow if the book is tied to the current user's position
+        $allowed = $isAdmin || Log_status_book::where('book_id', $id)
+            ->where('position_id', $this->position_id)
+            ->exists();
         $data = [
             'status' => false,
             'message' => '',
             'data' => []
         ];
+        if (!$allowed) {
+            // Return empty dataset to the DataTable when not allowed
+            return response()->json($data);
+        }
         $logs = new Log_active_book();
         $logs = $logs->select('position_id', Log_active_book::raw('count(id) as total'))
             ->whereNot('position_id')
@@ -162,6 +191,14 @@ class TrackController extends Controller
         ];
         $id = Crypt::decrypt($request->input('id'));
         $position_id = $request->input('position_id');
+        // Guard access: only show details for books that belong to the user's position (unless admin)
+        $isAdmin = $this->isAdminUser();
+        $allowed = $isAdmin || Log_status_book::where('book_id', $id)
+            ->where('position_id', $this->position_id)
+            ->exists();
+        if (!$allowed) {
+            return response()->json($data);
+        }
         $logs = new Log_active_book();
         $logs = $logs
             ->select('log_active_books.*', 'users.fullname')
