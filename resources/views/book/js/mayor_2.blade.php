@@ -602,7 +602,7 @@
                         bbStartY = imgData.y + imgData.height + 10;
                     }
                     // Enlarge to match preview text scale (x2) while keeping center aligned
-                    var factor = 2.2;
+                    var factor = 0.2;
                     var origW = (bottomBox.endX - bottomBox.startX);
                     var origH = Math.max(10, bottomBox.endY - bbStartY);
                     var newW = origW * factor;
