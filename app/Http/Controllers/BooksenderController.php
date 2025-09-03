@@ -91,7 +91,7 @@ class BooksenderController extends Controller
         $book->inputBooknumberOrgStruc = $request['inputBooknumberOrgStruc'];
         $book->selectBookcircular = $request['selectBookcircular'];
         $book->selectLevelSpeed = $request['selectLevelSpeed'];
-        $book->inputDated = $request['inputDated'];
+        $book->inputDated = $request['inputDated'] ?: date('Y-m-d');
         $book->inputSubject = $request['inputSubject'];
         $book->inputBookto = $request['inputBookto'];
         $book->inputBookref = $request['inputBookref'];
@@ -168,7 +168,7 @@ class BooksenderController extends Controller
                     'type_regis' => $rec->type_name,
                     'number_book' => $rec->inputBooknumberOrgStruc . '/' . $rec->number_type . $rec->inputBooknumberEnd,
                     'title' => $rec->inputSubject,
-                    'date' => DateThai($rec->inputRecieveDate),
+                    'date' => DateThai($rec->inputDated),
                     'position_name' => $rec->position_name,
                     'action' => $action
                 ];
