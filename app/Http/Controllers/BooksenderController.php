@@ -47,7 +47,7 @@ class BooksenderController extends Controller
         $data['function_key'] = 'bookSender';
         $data['book_type'] = Book_type::where('type', 2)->get();
         $data['book_type_parent'] = Book_type_parent::get();
-        $books = Book::where('selectBookregist', $data['book_type'][0]->id)->where('position_id', auth()->user()->position_id)->where('selectBookregistSup', $data['book_type_parent'][0]->id)->orderBy('inputBookregistNumber', 'desc')->first();
+        $books = Book::where('selectBookregist', $data['book_type'][0]->id)->where('sessionPosition', auth()->user()->position_id)->where('selectBookregistSup', $data['book_type_parent'][0]->id)->orderBy('inputBookregistNumber', 'desc')->first();
         if ($books) {
             $data['inputBookregistNumber'] = $books->inputBookregistNumber + 1;
         } else {
@@ -63,9 +63,9 @@ class BooksenderController extends Controller
         $id = $request->input('id');
         $parent_id = $request->input('parent');
         if ($id == 3) {
-            $books = Book::where('selectBookregist', $id)->where('position_id', auth()->user()->position_id)->where('selectBookregistSup', $parent_id)->orderBy('inputBookregistNumber', 'desc')->first();
+            $books = Book::where('selectBookregist', $id)->where('sessionPosition', auth()->user()->position_id)->where('selectBookregistSup', $parent_id)->orderBy('inputBookregistNumber', 'desc')->first();
         } else {
-            $books = Book::where('selectBookregist', $id)->where('selectBookregistSup', $parent_id)->orderBy('inputBookregistNumber', 'desc')->first();
+            $books = Book::where('selectBookregist', $id)->where('sessionPosition', auth()->user()->position_id)->where('selectBookregistSup', $parent_id)->orderBy('inputBookregistNumber', 'desc')->first();
         }
         if ($books) {
             $inputBookregistNumber = $books->inputBookregistNumber + 1;
